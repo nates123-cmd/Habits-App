@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 
 const MOODS      = ['bored', 'anxious', 'tired', 'fine', 'focused']
 const ACTIVITIES = ['phone', 'working', 'working out', 'TV', 'other']
-const LOCATIONS  = ['nose', 'finger', 'face']
+const LOCATIONS  = ['nose', 'finger', 'face', 'nails']
 
 export default function LogContextSheet({ habit, userId, onDone, onClose }) {
   const [location, setLocation] = useState('')
