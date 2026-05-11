@@ -58,31 +58,44 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   const [finalNote,       setFinalNote]       = useState('')
   const [saving,          setSaving]          = useState(false)
 
-  const intervalRef = useRef(null)
+  const intervalRef  = useRef(null)
+  const startTimeRef = useRef(null)
 
   useEffect(() => {
     if (active) {
       intervalRef.current = setInterval(() => {
-        setElapsed(prev => {
-          const next = prev + 1
-          if (pomodoro && phase === 'work' && next >= POMODORO_WORK) {
-            setPhase('break')
-            chime()
-            return 0
-          }
-          if (pomodoro && phase === 'break' && next >= POMODORO_BREAK) {
-            setPhase('work')
-            chime()
-            return 0
-          }
-          return next
-        })
+        const secs = Math.floor((Date.now() - startTimeRef.current) / 1000)
+        if (pomodoro && phase === 'work' && secs >= POMODORO_WORK) {
+          startTimeRef.current = Date.now()
+          setElapsed(0)
+          setPhase('break')
+          chime()
+        } else if (pomodoro && phase === 'break' && secs >= POMODORO_BREAK) {
+          startTimeRef.current = Date.now()
+          setElapsed(0)
+          setPhase('work')
+          chime()
+        } else {
+          setElapsed(secs)
+        }
       }, 1000)
     } else {
       clearInterval(intervalRef.current)
     }
     return () => clearInterval(intervalRef.current)
   }, [active, pomodoro, phase])
+
+  // Re-sync immediately when returning to the app after screen lock
+  useEffect(() => {
+    if (!active) return
+    const sync = () => {
+      if (!document.hidden && startTimeRef.current) {
+        setElapsed(Math.floor((Date.now() - startTimeRef.current) / 1000))
+      }
+    }
+    document.addEventListener('visibilitychange', sync)
+    return () => document.removeEventListener('visibilitychange', sync)
+  }, [active])
 
   async function startSession() {
     const { data, error } = await supabase
@@ -91,6 +104,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
       .select()
       .single()
     if (!error) setSessionId(data.id)
+    startTimeRef.current = Date.now()
     setElapsed(0)
     setPhase('work')
     setDistractionsLog([])
