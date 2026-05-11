@@ -4,7 +4,8 @@ import { supabase } from '../lib/supabase'
 const PAGE_SIZE = 20
 
 export default function HistoryView({ habits, userId }) {
-  const [selectedId,  setSelectedId]  = useState(habits[0]?.id || null)
+  const visibleHabits = habits.filter(h => h.type !== 'build' || h.name === 'Focus')
+  const [selectedId,  setSelectedId]  = useState(visibleHabits[0]?.id || null)
   const [logs,        setLogs]        = useState([])
   const [focusSessions, setFocusSessions] = useState([])
   const [page,        setPage]        = useState(0)
@@ -74,13 +75,19 @@ export default function HistoryView({ habits, userId }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 
+  function typeDist() {
+    const counts = {}
+    logs.forEach(l => { if (l.notes) counts[l.notes] = (counts[l.notes] || 0) + 1 })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">History</h2>
 
       {/* Habit selector */}
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-        {habits.map(h => (
+        {visibleHabits.map(h => (
           <button
             key={h.id}
             onClick={() => setSelectedId(h.id)}
@@ -131,9 +138,26 @@ export default function HistoryView({ habits, userId }) {
                 <p className="text-xs text-gray-500 mt-0.5">
                   {new Date(s.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                 </p>
-                {s.distractions && (
-                  <p className="text-xs text-gray-500 mt-0.5">Distractions: {s.distractions}</p>
-                )}
+                {s.distractions && (() => {
+                  try {
+                    const d = JSON.parse(s.distractions)
+                    return (
+                      <div className="mt-1 space-y-0.5">
+                        {d.logs?.map((l, i) => (
+                          <p key={i} className="text-xs text-gray-500">
+                            <span className="text-amber-500/70">{l.at}</span>
+                            {l.text && ` — ${l.text}`}
+                            {l.mood && <span className="text-yellow-600/70"> · {l.mood}</span>}
+                            {l.activity && <span className="text-blue-600/70"> · {l.activity}</span>}
+                          </p>
+                        ))}
+                        {d.note && <p className="text-xs text-gray-600 italic">{d.note}</p>}
+                      </div>
+                    )
+                  } catch {
+                    return <p className="text-xs text-gray-500 mt-0.5">Distractions: {s.distractions}</p>
+                  }
+                })()}
               </div>
             ))}
           </div>
@@ -145,7 +169,15 @@ export default function HistoryView({ habits, userId }) {
         <>
           {/* Mood/activity distribution */}
           {selectedHabit?.type === 'reduce' && logs.length > 0 && (
-            <div className="flex gap-6">
+            <div className="flex gap-6 flex-wrap">
+              {selectedHabit?.name === 'BFRB' && typeDist().length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Type</p>
+                  {typeDist().map(([t, c]) => (
+                    <p key={t} className="text-sm text-gray-300 capitalize">{t} <span className="text-gray-500">×{c}</span></p>
+                  ))}
+                </div>
+              )}
               {moodDist().length > 0 && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Mood</p>

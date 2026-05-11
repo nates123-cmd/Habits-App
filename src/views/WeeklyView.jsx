@@ -54,6 +54,13 @@ export default function WeeklyView({ habits, userId }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 
+  function typeBreakdown(habitId) {
+    const relevant = weekLogs.filter(l => l.habit_id === habitId && l.notes)
+    const counts = {}
+    relevant.forEach(l => { counts[l.notes] = (counts[l.notes] || 0) + 1 })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }
+
   function buildStreak(habitId) {
     let streak = 0
     for (let i = weekDays.length - 1; i >= 0; i--) {
@@ -123,26 +130,37 @@ export default function WeeklyView({ habits, userId }) {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                  {(moods.length > 0 || acts.length > 0) && (
-                    <div className="mt-3 flex gap-4 flex-wrap">
-                      {moods.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Top moods</p>
-                          {moods.slice(0, 3).map(([m, c]) => (
-                            <p key={m} className="text-sm text-gray-300 capitalize">{m} <span className="text-gray-500">×{c}</span></p>
-                          ))}
-                        </div>
-                      )}
-                      {acts.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Top activities</p>
-                          {acts.slice(0, 3).map(([a, c]) => (
-                            <p key={a} className="text-sm text-gray-300 capitalize">{a} <span className="text-gray-500">×{c}</span></p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {(() => {
+                    const types = h.name === 'BFRB' ? typeBreakdown(h.id) : []
+                    return (moods.length > 0 || acts.length > 0 || types.length > 0) && (
+                      <div className="mt-3 flex gap-4 flex-wrap">
+                        {types.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Type</p>
+                            {types.map(([t, c]) => (
+                              <p key={t} className="text-sm text-gray-300 capitalize">{t} <span className="text-gray-500">×{c}</span></p>
+                            ))}
+                          </div>
+                        )}
+                        {moods.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Top moods</p>
+                            {moods.slice(0, 3).map(([m, c]) => (
+                              <p key={m} className="text-sm text-gray-300 capitalize">{m} <span className="text-gray-500">×{c}</span></p>
+                            ))}
+                          </div>
+                        )}
+                        {acts.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Top activities</p>
+                            {acts.slice(0, 3).map(([a, c]) => (
+                              <p key={a} className="text-sm text-gray-300 capitalize">{a} <span className="text-gray-500">×{c}</span></p>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
@@ -150,23 +168,6 @@ export default function WeeklyView({ habits, userId }) {
         </section>
       )}
 
-      {/* Build habits */}
-      {buildHabits.length > 0 && (
-        <section>
-          <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">Build</p>
-          <div className="space-y-3">
-            {buildHabits.map(h => (
-              <div key={h.id} className="bg-gray-800 rounded-2xl px-5 py-4 flex items-center justify-between">
-                <p className="text-white font-medium">{h.name}</p>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-green-400">{buildStreak(h.id)}d streak</p>
-                  <p className="text-xs text-gray-500">{buildWeeklyRate(h.id)}% this week</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
     </div>
   )
 }

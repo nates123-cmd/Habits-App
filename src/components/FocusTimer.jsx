@@ -4,6 +4,31 @@ import BottomSheet from './BottomSheet'
 
 const POMODORO_WORK  = 25 * 60
 const POMODORO_BREAK = 5  * 60
+const MOODS          = ['bored', 'anxious', 'tired', 'fine']
+const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
+
+function chime() {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)()
+  const notes = [523.25, 659.25] // C5 → E5
+
+  notes.forEach((freq, i) => {
+    const osc  = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.type = 'sine'
+    osc.frequency.value = freq
+
+    const start = ctx.currentTime + i * 0.35
+    gain.gain.setValueAtTime(0, start)
+    gain.gain.linearRampToValueAtTime(0.18, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.6)
+
+    osc.start(start)
+    osc.stop(start + 1.6)
+  })
+}
 
 function fmt(seconds) {
   const m = String(Math.floor(seconds / 60)).padStart(2, '0')
@@ -11,16 +36,27 @@ function fmt(seconds) {
   return `${m}:${s}`
 }
 
+function fmtTime(date) {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+}
+
 export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) {
-  const [active,    setActive]    = useState(false)
-  const [pomodoro,  setPomodoro]  = useState(false)
-  const [elapsed,   setElapsed]   = useState(0)
-  const [phase,     setPhase]     = useState('work') // 'work' | 'break'
-  const [sessionId, setSessionId] = useState(null)
-  const [showWrap,  setShowWrap]  = useState(false)
-  const [worked,    setWorked]    = useState('')
-  const [distractions, setDistractions] = useState('')
-  const [saving,    setSaving]    = useState(false)
+  const [active,          setActive]          = useState(false)
+  const [pomodoro,        setPomodoro]        = useState(true)
+  const [elapsed,         setElapsed]         = useState(0)
+  const [phase,           setPhase]           = useState('work')
+  const [sessionId,       setSessionId]       = useState(null)
+  const [showFullscreen,  setShowFullscreen]  = useState(false)
+  const [showDistraction, setShowDistraction] = useState(false)
+  const [distractionsLog, setDistractionsLog] = useState([])
+  const [distText,        setDistText]        = useState('')
+  const [distMood,        setDistMood]        = useState('')
+  const [distActivity,    setDistActivity]    = useState('')
+  const [topic,           setTopic]           = useState('')
+  const [showWrap,        setShowWrap]        = useState(false)
+  const [worked,          setWorked]          = useState('')
+  const [finalNote,       setFinalNote]       = useState('')
+  const [saving,          setSaving]          = useState(false)
 
   const intervalRef = useRef(null)
 
@@ -31,10 +67,12 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
           const next = prev + 1
           if (pomodoro && phase === 'work' && next >= POMODORO_WORK) {
             setPhase('break')
+            chime()
             return 0
           }
           if (pomodoro && phase === 'break' && next >= POMODORO_BREAK) {
             setPhase('work')
+            chime()
             return 0
           }
           return next
@@ -55,42 +93,68 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
     if (!error) setSessionId(data.id)
     setElapsed(0)
     setPhase('work')
+    setDistractionsLog([])
+    setWorked(topic)
     setActive(true)
+    setShowFullscreen(true)
   }
 
-  function stopSession() {
+  function logDistraction() {
+    if (!distText.trim() && !distMood && !distActivity) return
+    setDistractionsLog(prev => [
+      ...prev,
+      {
+        text:     distText.trim() || null,
+        mood:     distMood || null,
+        activity: distActivity || null,
+        at:       fmtTime(new Date()),
+      },
+    ])
+    setDistText('')
+    setDistMood('')
+    setDistActivity('')
+    setShowDistraction(false)
+  }
+
+  function endSession() {
     setActive(false)
+    setShowFullscreen(false)
     setShowWrap(true)
   }
 
   async function completeSession() {
-    if (!worked.trim()) return
     setSaving(true)
     const minutes = Math.ceil(elapsed / 60)
+
+    const distractionsPayload = JSON.stringify({
+      logs: distractionsLog,
+      note: finalNote.trim() || null,
+    })
+
     await supabase
       .from('focus_sessions')
       .update({
         completed:        true,
         duration_minutes: minutes,
-        what_worked_on:   worked.trim(),
-        distractions:     distractions.trim() || null,
+        what_worked_on:   worked.trim() || '',
+        distractions:     distractionsLog.length > 0 || finalNote.trim()
+          ? distractionsPayload
+          : null,
       })
       .eq('id', sessionId)
 
-    // Auto-check Focus habit for today
     if (focusHabitId) {
-      await supabase.from('habit_logs').insert({
-        user_id:  userId,
-        habit_id: focusHabitId,
-      })
+      await supabase.from('habit_logs').insert({ user_id: userId, habit_id: focusHabitId })
     }
 
     setSaving(false)
     setShowWrap(false)
     setSessionId(null)
     setElapsed(0)
+    setTopic('')
     setWorked('')
-    setDistractions('')
+    setFinalNote('')
+    setDistractionsLog([])
     onSessionComplete?.()
   }
 
@@ -99,57 +163,190 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
     : fmt(elapsed)
 
   return (
-    <div className="bg-gray-800 rounded-2xl p-5 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-white font-semibold">Focus Session</h3>
-        <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
-          <span>Pomodoro</span>
-          <div
-            onClick={() => !active && setPomodoro(p => !p)}
-            className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${
-              pomodoro ? 'bg-indigo-600' : 'bg-gray-600'
-            } ${active ? 'opacity-40 cursor-not-allowed' : ''}`}
+    <>
+      {/* Card */}
+      <div className="bg-gray-800 rounded-2xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-semibold">Focus Session</h3>
+          {!active && (
+            <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer select-none">
+              <span>Pomodoro</span>
+              <div
+                onClick={() => setPomodoro(p => !p)}
+                className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${
+                  pomodoro ? 'bg-indigo-600' : 'bg-gray-600'
+                }`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                  pomodoro ? 'translate-x-5' : ''
+                }`} />
+              </div>
+            </label>
+          )}
+          {active && distractionsLog.length > 0 && (
+            <span className="text-xs text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}</span>
+          )}
+        </div>
+
+        <div className="text-center">
+          <span className="text-5xl font-mono font-bold text-white tabular-nums">{displayTime}</span>
+          {pomodoro && active && (
+            <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
+              {phase === 'work' ? '25 min work' : '5 min break'}
+            </p>
+          )}
+        </div>
+
+        {!active && (
+          <input
+            type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+            value={topic}
+            onChange={e => setTopic(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && startSession()}
+            placeholder="What do you want to focus on?"
+            className="w-full bg-gray-700 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder-gray-500"
+          />
+        )}
+
+        {!active ? (
+          <button
+            onClick={startSession}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl py-3 transition-colors"
           >
-            <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-              pomodoro ? 'translate-x-5' : ''
-            }`} />
+            Start
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowFullscreen(true)}
+            className="w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl py-3 transition-colors"
+          >
+            Open session
+          </button>
+        )}
+      </div>
+
+      {/* Fullscreen timer overlay */}
+      {showFullscreen && (
+        <div className="fixed inset-0 z-40 bg-gray-950 flex flex-col">
+          <div className="flex items-center px-5 pt-12 pb-4">
+            <button
+              onClick={() => setShowFullscreen(false)}
+              className="text-gray-400 hover:text-white text-sm flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+            {distractionsLog.length > 0 && (
+              <span className="ml-auto text-xs text-amber-400">
+                {distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
-        </label>
-      </div>
 
-      {pomodoro && active && (
-        <p className="text-xs text-center text-gray-400 uppercase tracking-wide">
-          {phase === 'work' ? '25 min work' : '5 min break'}
-        </p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8">
+            {topic && (
+              <p className="text-5xl font-bold text-white text-center leading-tight">{topic}</p>
+            )}
+            <span className="text-3xl font-mono text-gray-500 tabular-nums">{displayTime}</span>
+            {pomodoro && (
+              <p className="text-xs text-gray-600 uppercase tracking-widest">
+                {phase === 'work' ? 'Focus' : 'Break'}
+              </p>
+            )}
+          </div>
+
+          <div className="px-6 pb-16 space-y-3">
+            <button
+              onClick={() => setShowDistraction(true)}
+              className="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-2xl py-4 text-lg transition-colors"
+            >
+              Distraction
+            </button>
+            <button
+              onClick={endSession}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-red-400 font-semibold rounded-2xl py-4 transition-colors"
+            >
+              End Session
+            </button>
+          </div>
+        </div>
       )}
 
-      <div className="text-center">
-        <span className="text-5xl font-mono font-bold text-white tabular-nums">{displayTime}</span>
-      </div>
-
-      {!active ? (
-        <button
-          onClick={startSession}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl py-3 transition-colors"
-        >
-          Start
-        </button>
-      ) : (
-        <button
-          onClick={stopSession}
-          className="w-full bg-red-700 hover:bg-red-600 text-white font-semibold rounded-xl py-3 transition-colors"
-        >
-          Stop
-        </button>
+      {/* Distraction log sheet */}
+      {showDistraction && (
+        <BottomSheet title="Log distraction" onClose={() => setShowDistraction(false)}>
+          <div className="space-y-5">
+            <div>
+              <p className="text-gray-400 text-sm mb-2">What pulled you away? (optional)</p>
+              <input
+                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                value={distText}
+                onChange={e => setDistText(e.target.value)}
+                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 text-sm placeholder-gray-500"
+                placeholder="e.g. Phone notification"
+                autoFocus
+              />
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm mb-2">Mood</p>
+              <div className="flex gap-2 flex-wrap">
+                {MOODS.map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setDistMood(distMood === m ? '' : m)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
+                      distMood === m
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm mb-2">Activity</p>
+              <div className="flex gap-2 flex-wrap">
+                {ACTIVITIES.map(a => (
+                  <button
+                    key={a}
+                    onClick={() => setDistActivity(distActivity === a ? '' : a)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
+                      distActivity === a
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={logDistraction}
+              disabled={!distText.trim() && !distMood && !distActivity}
+              className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition-colors"
+            >
+              Log it
+            </button>
+          </div>
+        </BottomSheet>
       )}
 
+      {/* Wrap-up sheet */}
       {showWrap && (
         <BottomSheet title="Session complete" onClose={() => setShowWrap(false)}>
           <div className="space-y-4">
+            {distractionsLog.length > 0 && (
+              <p className="text-xs text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''} logged</p>
+            )}
             <div>
-              <label className="text-gray-400 text-sm block mb-1">What did you work on? <span className="text-red-400">*</span></label>
+              <label className="text-gray-400 text-sm block mb-1">What did you work on? (optional)</label>
               <input
-                type="text"
+                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
                 value={worked}
                 onChange={e => setWorked(e.target.value)}
                 className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder-gray-500"
@@ -158,18 +355,18 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
               />
             </div>
             <div>
-              <label className="text-gray-400 text-sm block mb-1">Any distractions? (optional)</label>
+              <label className="text-gray-400 text-sm block mb-1">Any distraction notes? (optional)</label>
               <input
-                type="text"
-                value={distractions}
-                onChange={e => setDistractions(e.target.value)}
+                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                value={finalNote}
+                onChange={e => setFinalNote(e.target.value)}
                 className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder-gray-500"
-                placeholder="e.g. Phone, email"
+                placeholder="Overall notes on distractions"
               />
             </div>
             <button
               onClick={completeSession}
-              disabled={saving || !worked.trim()}
+              disabled={saving}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
             >
               {saving ? 'Saving…' : 'Save session'}
@@ -177,6 +374,6 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
           </div>
         </BottomSheet>
       )}
-    </div>
+    </>
   )
 }

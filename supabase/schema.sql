@@ -99,9 +99,7 @@ begin
 
   insert into habits (user_id, name, type, tracking, has_context) values
     -- Reduce habits
-    (p_user_id, 'Finger Picking', 'reduce', 'instance', true),
-    (p_user_id, 'Nose Picking',   'reduce', 'instance', true),
-    (p_user_id, 'Drinks',         'reduce', 'instance', false),
+    (p_user_id, 'BFRB',           'reduce', 'instance', true),
     -- Build habits
     (p_user_id, 'Gym',            'build',  'checkbox', false),
     (p_user_id, 'Healthy Eating', 'build',  'checkbox', false),
