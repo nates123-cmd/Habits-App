@@ -48,6 +48,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   const [sessionId,       setSessionId]       = useState(null)
   const [showFullscreen,  setShowFullscreen]  = useState(false)
   const [showDistraction, setShowDistraction] = useState(false)
+  const [showPhaseEnd,    setShowPhaseEnd]    = useState(false)
   const [distractionsLog, setDistractionsLog] = useState([])
   const [distMood,        setDistMood]        = useState('')
   const [distActivity,    setDistActivity]    = useState('')
@@ -67,10 +68,11 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
       intervalRef.current = setInterval(() => {
         const secs = Math.floor((Date.now() - startTimeRef.current) / 1000)
         if (pomodoro && phase === 'work' && secs >= POMODORO_WORK) {
-          startTimeRef.current = Date.now()
-          setElapsed(0)
-          setPhase('break')
+          setActive(false)
+          setElapsed(POMODORO_WORK)
           chime()
+          navigator.vibrate?.([200, 100, 200])
+          setShowPhaseEnd(true)
         } else if (pomodoro && phase === 'break' && secs >= POMODORO_BREAK) {
           startTimeRef.current = Date.now()
           setElapsed(0)
@@ -400,6 +402,38 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
             </button>
           </div>
         </BottomSheet>
+      )}
+
+      {/* Work phase end prompt */}
+      {showPhaseEnd && (
+        <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col items-center justify-center px-8 gap-6">
+          <p className="text-white text-3xl font-bold text-center">25 minutes done</p>
+          <p className="text-gray-400 text-center">What do you want to do?</p>
+          <button
+            onClick={() => {
+              setShowPhaseEnd(false)
+              startTimeRef.current = Date.now()
+              setElapsed(0)
+              setActive(true)
+            }}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl py-5 text-lg transition-colors"
+          >
+            Keep going
+          </button>
+          <button
+            onClick={() => {
+              setShowPhaseEnd(false)
+              setPhase('break')
+              startTimeRef.current = Date.now()
+              setElapsed(0)
+              setActive(true)
+              setShowFullscreen(true)
+            }}
+            className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl py-5 text-lg transition-colors"
+          >
+            Take a break
+          </button>
+        </div>
       )}
     </>
   )
