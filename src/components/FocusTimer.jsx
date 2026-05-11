@@ -4,7 +4,7 @@ import BottomSheet from './BottomSheet'
 
 const POMODORO_WORK  = 25 * 60
 const POMODORO_BREAK = 5  * 60
-const MOODS          = ['bored', 'anxious', 'tired', 'fine']
+const MOODS          = ['bored', 'anxious', 'tired', 'fine', 'unsure']
 const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
 
 function chime() {
@@ -49,9 +49,10 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   const [showFullscreen,  setShowFullscreen]  = useState(false)
   const [showDistraction, setShowDistraction] = useState(false)
   const [distractionsLog, setDistractionsLog] = useState([])
-  const [distText,        setDistText]        = useState('')
   const [distMood,        setDistMood]        = useState('')
   const [distActivity,    setDistActivity]    = useState('')
+  const [distOther,       setDistOther]       = useState('')
+  const [distNotes,       setDistNotes]       = useState('')
   const [topic,           setTopic]           = useState('')
   const [showWrap,        setShowWrap]        = useState(false)
   const [worked,          setWorked]          = useState('')
@@ -114,19 +115,21 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   }
 
   function logDistraction() {
-    if (!distText.trim() && !distMood && !distActivity) return
+    if (!distMood && !distActivity) return
+    const activity = distActivity === 'Other' && distOther.trim() ? distOther.trim() : distActivity
     setDistractionsLog(prev => [
       ...prev,
       {
-        text:     distText.trim() || null,
+        activity: activity || null,
         mood:     distMood || null,
-        activity: distActivity || null,
+        notes:    distNotes.trim() || null,
         at:       fmtTime(new Date()),
       },
     ])
-    setDistText('')
     setDistMood('')
     setDistActivity('')
+    setDistOther('')
+    setDistNotes('')
     setShowDistraction(false)
   }
 
@@ -293,15 +296,32 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
         <BottomSheet title="Log distraction" onClose={() => setShowDistraction(false)}>
           <div className="space-y-5">
             <div>
-              <p className="text-gray-400 text-sm mb-2">What pulled you away? (optional)</p>
-              <input
-                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
-                value={distText}
-                onChange={e => setDistText(e.target.value)}
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 text-sm placeholder-gray-500"
-                placeholder="e.g. Phone notification"
-                autoFocus
-              />
+              <p className="text-gray-400 text-sm mb-2">What pulled you away?</p>
+              <div className="flex gap-2 flex-wrap">
+                {ACTIVITIES.map(a => (
+                  <button
+                    key={a}
+                    onClick={() => { setDistActivity(distActivity === a ? '' : a); setDistOther('') }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
+                      distActivity === a
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {a}
+                  </button>
+                ))}
+              </div>
+              {distActivity === 'Other' && (
+                <input
+                  type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                  value={distOther}
+                  onChange={e => setDistOther(e.target.value)}
+                  className="mt-3 w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 text-sm placeholder-gray-500"
+                  placeholder="What was it?"
+                  autoFocus
+                />
+              )}
             </div>
             <div>
               <p className="text-gray-400 text-sm mb-2">Mood</p>
@@ -322,26 +342,19 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
               </div>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-2">Activity</p>
-              <div className="flex gap-2 flex-wrap">
-                {ACTIVITIES.map(a => (
-                  <button
-                    key={a}
-                    onClick={() => setDistActivity(distActivity === a ? '' : a)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
-                      distActivity === a
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {a}
-                  </button>
-                ))}
-              </div>
+              <p className="text-gray-400 text-sm mb-2">Additional notes (optional)</p>
+              <textarea
+                autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                value={distNotes}
+                onChange={e => setDistNotes(e.target.value)}
+                rows={2}
+                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm placeholder-gray-500"
+                placeholder="Anything else?"
+              />
             </div>
             <button
               onClick={logDistraction}
-              disabled={!distText.trim() && !distMood && !distActivity}
+              disabled={!distMood && !distActivity}
               className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition-colors"
             >
               Log it
