@@ -22,7 +22,7 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-white mb-2 text-center">Habits</h1>
+        <h1 className="text-3xl font-bold text-white mb-2 text-center">Tick</h1>
         <p className="text-gray-400 text-center mb-8 text-sm">Track what you want to build and reduce.</p>
 
         {sent ? (
