@@ -57,7 +57,7 @@ export default function WeeklyView({ habits, userId }) {
   function typeBreakdown(habitId) {
     const relevant = weekLogs.filter(l => l.habit_id === habitId && l.notes)
     const counts = {}
-    relevant.forEach(l => { counts[l.notes] = (counts[l.notes] || 0) + 1 })
+    relevant.forEach(l => { const t = l.notes.split('\n')[0]; counts[t] = (counts[t] || 0) + 1 })
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 

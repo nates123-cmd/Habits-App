@@ -3,7 +3,7 @@ import BottomSheet from './BottomSheet'
 import { supabase } from '../lib/supabase'
 
 const MOODS      = ['bored', 'anxious', 'tired', 'fine', 'focused']
-const ACTIVITIES = ['phone', 'working', 'TV', 'other']
+const ACTIVITIES = ['phone', 'working', 'working out', 'TV', 'other']
 const LOCATIONS  = ['nose', 'finger', 'face']
 
 export default function LogContextSheet({ habit, userId, onDone, onClose }) {
@@ -22,7 +22,7 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
       habit_id: habit.id,
       mood:     mood || null,
       activity: activity || null,
-      notes:    isBFRB ? (location || null) : (notes || null),
+      notes:    isBFRB ? ([location, notes].filter(Boolean).join('\n') || null) : (notes || null),
     })
     setSaving(false)
     onDone()
@@ -90,18 +90,16 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
           </div>
         </div>
 
-        {!isBFRB && (
-          <div>
-            <p className="text-gray-400 text-sm mb-2">Notes (optional)</p>
-            <textarea autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-              className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm placeholder-gray-500"
-              placeholder="Anything else?"
-            />
-          </div>
-        )}
+        <div>
+          <p className="text-gray-400 text-sm mb-2">Notes (optional)</p>
+          <textarea autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm placeholder-gray-500"
+            placeholder="Anything else?"
+          />
+        </div>
 
         <button
           onClick={handleLog}

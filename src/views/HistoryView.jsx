@@ -77,7 +77,7 @@ export default function HistoryView({ habits, userId }) {
 
   function typeDist() {
     const counts = {}
-    logs.forEach(l => { if (l.notes) counts[l.notes] = (counts[l.notes] || 0) + 1 })
+    logs.forEach(l => { if (l.notes) { const t = l.notes.split('\n')[0]; counts[t] = (counts[t] || 0) + 1 } })
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 
