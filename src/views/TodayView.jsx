@@ -102,10 +102,12 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                   {h.name === 'BFRB' && (
                     <button
                       onClick={openSlouchSheet}
-                      className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 px-4 flex items-center justify-between text-sm font-medium text-amber-400 transition-colors"
+                      className="w-full mt-3 flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                     >
-                      <span>Slouching</span>
-                      <span className="tabular-nums">{slouchCount > 0 ? `×${slouchCount}` : ''}</span>
+                      <span className="text-white font-medium text-lg">Slouching</span>
+                      <span className={`text-3xl font-bold tabular-nums ${slouchCount > 0 ? 'text-amber-400' : 'text-gray-600'}`}>
+                        {slouchCount}
+                      </span>
                     </button>
                   )}
                 </div>
