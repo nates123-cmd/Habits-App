@@ -168,11 +168,11 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setBackburnerInput('')
   }
   function sendToReminders(text) {
-    // Opens an iOS Shortcut named "Add Reminder" that takes the text as input.
-    // Set up once on iPhone: Shortcuts app → new shortcut named exactly "Add Reminder"
+    // Opens an iOS Shortcut named "Add Tick Reminder" that takes the text as input.
+    // Set up once on iPhone: Shortcuts app → new shortcut named exactly "Add Tick Reminder"
     // → "Add new reminder" action using Shortcut Input as the title.
     if (!text) return
-    const url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('Add Reminder') + '&input=text&text=' + encodeURIComponent(text)
+    const url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('Add Tick Reminder') + '&input=text&text=' + encodeURIComponent(text)
     window.location.href = url
   }
 
