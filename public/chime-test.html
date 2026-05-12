@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chime Audition</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #030712; color: #fff; font-family: system-ui, sans-serif; padding: 2rem 1rem; max-width: 480px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem; }
+    p  { color: #6b7280; font-size: 0.875rem; margin-bottom: 2rem; }
+    .option { margin-bottom: 1rem; }
+    .label { font-size: 0.75rem; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+    button {
+      width: 100%; padding: 0.875rem 1rem; border-radius: 0.75rem;
+      background: #1f2937; color: #fff; border: none; font-size: 0.95rem;
+      font-weight: 600; cursor: pointer; text-align: left; transition: background 0.15s;
+    }
+    button:hover { background: #374151; }
+    button:active { background: #4f46e5; }
+  </style>
+</head>
+<body>
+  <h1>Chime Audition</h1>
+  <p>Tap each to hear it. Tell Claude which one to use.</p>
+
+  <div class="option"><div class="label">1 — Current (FMaj → CMaj hit)</div>
+    <button onclick="fmaj_cmaj()">Play</button></div>
+
+  <div class="option"><div class="label">2 — Original (C5 → E5 two-note)</div>
+    <button onclick="original()">Play</button></div>
+
+  <div class="option"><div class="label">3 — Singing bowl (single F, long decay)</div>
+    <button onclick="singingBowl()">Play</button></div>
+
+  <div class="option"><div class="label">4 — Soft bell (C5 + G5 fifth)</div>
+    <button onclick="perfectFifth()">Play</button></div>
+
+  <div class="option"><div class="label">5 — Major chord hit (C5-E5-G5)</div>
+    <button onclick="majorChord()">Play</button></div>
+
+  <div class="option"><div class="label">6 — Warm resolution (FMaj7 → CMaj7)</div>
+    <button onclick="warmResolution()">Play</button></div>
+
+  <div class="option"><div class="label">7 — Pentatonic rise (C-D-E-G quick)</div>
+    <button onclick="pentatonic()">Play</button></div>
+
+  <div class="option"><div class="label">8 — Jazz ii-V-I (Dm7 → G7 → CMaj)</div>
+    <button onclick="jazzResolution()">Play</button></div>
+
+  <div class="option"><div class="label">9 — Marimba (triangle wave CMaj hit)</div>
+    <button onclick="marimba()">Play</button></div>
+
+  <div class="option"><div class="label">10 — Two soft bells (E5 then B5)</div>
+    <button onclick="twoBells()">Play</button></div>
+
+  <script>
+    function ctx() { return new (window.AudioContext || window.webkitAudioContext)() }
+
+    function note(ac, freq, start, peak, decay, type = 'sine') {
+      const osc = ac.createOscillator()
+      const gain = ac.createGain()
+      osc.connect(gain); gain.connect(ac.destination)
+      osc.type = type; osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, start)
+      gain.gain.linearRampToValueAtTime(peak, start + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + decay)
+      osc.start(start); osc.stop(start + decay)
+    }
+
+    function chord(ac, freqs, t, peak, decay, type = 'sine') {
+      freqs.forEach(f => note(ac, f, t, peak, decay, type))
+    }
+
+    // 1 — Current
+    function fmaj_cmaj() {
+      const ac = ctx()
+      chord(ac, [349.23, 440.00, 523.25], ac.currentTime, 0.12, 0.9)
+      chord(ac, [523.25, 659.25, 783.99], ac.currentTime + 0.45, 0.12, 0.9)
+    }
+
+    // 2 — Original
+    function original() {
+      const ac = ctx()
+      note(ac, 523.25, ac.currentTime, 0.18, 1.6)
+      note(ac, 659.25, ac.currentTime + 0.35, 0.18, 1.6)
+    }
+
+    // 3 — Singing bowl
+    function singingBowl() {
+      const ac = ctx()
+      note(ac, 349.23, ac.currentTime, 0.2, 3.0)
+    }
+
+    // 4 — Soft bell (perfect fifth)
+    function perfectFifth() {
+      const ac = ctx()
+      chord(ac, [523.25, 783.99], ac.currentTime, 0.15, 2.0)
+    }
+
+    // 5 — Major chord hit
+    function majorChord() {
+      const ac = ctx()
+      chord(ac, [523.25, 659.25, 783.99], ac.currentTime, 0.12, 1.5)
+    }
+
+    // 6 — Warm resolution (FMaj7 → CMaj7)
+    function warmResolution() {
+      const ac = ctx()
+      chord(ac, [349.23, 440.00, 523.25, 659.25], ac.currentTime, 0.1, 1.0)
+      chord(ac, [261.63, 523.25, 659.25, 783.99], ac.currentTime + 0.5, 0.1, 1.5)
+    }
+
+    // 7 — Pentatonic rise
+    function pentatonic() {
+      const ac = ctx()
+      ;[523.25, 587.33, 659.25, 783.99].forEach((f, i) => {
+        note(ac, f, ac.currentTime + i * 0.12, 0.15, 0.6)
+      })
+    }
+
+    // 8 — Jazz ii-V-I
+    function jazzResolution() {
+      const ac = ctx()
+      chord(ac, [293.66, 440.00, 523.25, 622.25], ac.currentTime, 0.1, 0.8)       // Dm7
+      chord(ac, [392.00, 493.88, 587.33, 698.46], ac.currentTime + 0.35, 0.1, 0.8) // G7
+      chord(ac, [523.25, 659.25, 783.99], ac.currentTime + 0.7, 0.12, 1.5)         // CMaj
+    }
+
+    // 9 — Marimba (triangle)
+    function marimba() {
+      const ac = ctx()
+      chord(ac, [523.25, 659.25, 783.99], ac.currentTime, 0.2, 1.0, 'triangle')
+    }
+
+    // 10 — Two soft bells
+    function twoBells() {
+      const ac = ctx()
+      note(ac, 659.25, ac.currentTime, 0.18, 1.5)
+      note(ac, 987.77, ac.currentTime + 0.3, 0.14, 1.5)
+    }
+  </script>
+</body>
+</html>
