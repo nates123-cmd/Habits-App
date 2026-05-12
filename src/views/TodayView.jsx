@@ -41,7 +41,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
   const [slouchNotes,    setSlouchNotes]    = useState('')
   const [slouchSaving,   setSlouchSaving]   = useState(false)
 
-  const reduceHabits = habits.filter(h => h.type === 'reduce')
+  const reduceHabits = habits.filter(h => h.type === 'reduce' && h.name !== 'Posture')
   const focusHabit   = habits.find(h => h.name === 'Focus' && h.type === 'build')
   const postureHabit = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
 
