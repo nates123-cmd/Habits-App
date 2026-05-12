@@ -9,26 +9,27 @@ const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell',
 
 function chime() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  // FMaj7 arpeggio: F4-A4-C5-E5-C5-A4-F4
-  const freqs   = [349.23, 440.00, 523.25, 659.25, 523.25, 440.00, 349.23]
-  const spacing = 2 / (freqs.length - 1) // evenly spread over 2s
+  // IV → I resolution: FMaj → CMaj, each chord hit simultaneously
+  const chords = [
+    [349.23, 440.00, 523.25],  // FMaj: F4-A4-C5
+    [523.25, 659.25, 783.99],  // CMaj: C5-E5-G5
+  ]
 
-  freqs.forEach((freq, i) => {
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-
-    osc.type = 'sine'
-    osc.frequency.value = freq
-
-    const start = ctx.currentTime + i * spacing
-    gain.gain.setValueAtTime(0, start)
-    gain.gain.linearRampToValueAtTime(0.15, start + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.7)
-
-    osc.start(start)
-    osc.stop(start + 0.7)
+  chords.forEach((chord, ci) => {
+    const t = ctx.currentTime + ci * 0.45
+    chord.forEach(freq => {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.12, t + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
+      osc.start(t)
+      osc.stop(t + 0.9)
+    })
   })
 }
 
