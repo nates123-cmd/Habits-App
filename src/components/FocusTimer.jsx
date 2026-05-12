@@ -480,7 +480,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
             {phase !== 'break' && todos.length === 0 && !showTodoInput && (
               <button
                 onClick={() => setShowTodoInput(true)}
-                className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+                className="w-full border-2 border-dashed border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-300 rounded-2xl py-3 text-base font-medium transition-colors"
               >
                 + Add session tasks
               </button>
