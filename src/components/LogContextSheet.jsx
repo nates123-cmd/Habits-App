@@ -6,7 +6,14 @@ const MOODS      = ['bored', 'anxious', 'tired', 'fine', 'focused']
 const ACTIVITIES = ['phone', 'working', 'working out', 'TV', 'other']
 const LOCATIONS  = ['nose', 'finger', 'face', 'nails']
 
+const OUTCOMES = [
+  { value: 'acted',     label: 'Acted on it' },
+  { value: 'caught_mid', label: 'Caught myself mid-behavior' },
+  { value: 'urge_only', label: 'Noticed an urge, didn\'t act' },
+]
+
 export default function LogContextSheet({ habit, userId, onDone, onClose }) {
+  const [outcome,  setOutcome]  = useState('')
   const [location, setLocation] = useState('')
   const [mood, setMood]         = useState('')
   const [activity, setActivity] = useState('')
@@ -23,6 +30,9 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
       mood:     mood || null,
       activity: activity || null,
       notes:    isBFRB ? ([location, notes].filter(Boolean).join('\n') || null) : (notes || null),
+      outcome:  isBFRB ? (outcome || null) : null,
+      source:   'tick',
+      log_date: new Date().toISOString().slice(0, 10),
     })
     setSaving(false)
     onDone()
@@ -31,10 +41,29 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
   return (
     <BottomSheet title={`Log — ${habit.name}`} onClose={onClose}>
       <div className="space-y-5">
+
+        {isBFRB && (
+          <div className="space-y-2">
+            {OUTCOMES.map(o => (
+              <button
+                key={o.value}
+                onClick={() => setOutcome(o.value)}
+                className={`w-full px-4 py-3 rounded-xl text-sm font-medium text-left transition-colors ${
+                  outcome === o.value
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isBFRB && (
           <div>
             <p className="text-gray-400 text-sm mb-2">Type</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {LOCATIONS.map(l => (
                 <button
                   key={l}
@@ -103,7 +132,7 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
 
         <button
           onClick={handleLog}
-          disabled={saving || (isBFRB && !location)}
+          disabled={saving || (isBFRB && !outcome)}
           className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
         >
           {saving ? 'Logging…' : 'Log it'}

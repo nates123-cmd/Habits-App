@@ -34,7 +34,10 @@ create table if not exists habit_logs (
   logged_at  timestamptz not null default now(),
   mood       text check (mood in ('bored', 'anxious', 'tired', 'fine', 'focused')),
   activity   text check (activity in ('driving', 'phone', 'working', 'working out', 'TV', 'other')),
-  notes      text
+  notes      text,
+  outcome    text check (outcome in ('acted', 'caught_mid', 'urge_only')),
+  source     text default 'tick',
+  log_date   date
 );
 
 create table if not exists focus_sessions (
@@ -44,7 +47,9 @@ create table if not exists focus_sessions (
   duration_minutes  int,
   what_worked_on    text not null default '',
   distractions      text,
-  completed         boolean not null default false
+  completed         boolean not null default false,
+  log_date          date,
+  source            text default 'tick'
 );
 
 -- ============================================================
