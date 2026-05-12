@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/dateUtils'
 import LogContextSheet from '../components/LogContextSheet'
@@ -31,6 +31,17 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
       </svg>
     )
   }
+  if (name === 'Distractions') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 8l4 3-4 3" />
+        <path d="M20 8l-4 3 4 3" />
+        <path d="M9 5l3 3 3-3" />
+        <path d="M9 19l3-3 3 3" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    )
+  }
   return null
 }
 
@@ -41,9 +52,22 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
   const [slouchNotes,    setSlouchNotes]    = useState('')
   const [slouchSaving,   setSlouchSaving]   = useState(false)
 
-  const reduceHabits = habits.filter(h => h.type === 'reduce' && h.name !== 'Posture')
-  const focusHabit   = habits.find(h => h.name === 'Focus' && h.type === 'build')
-  const postureHabit = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
+  const reduceHabits      = habits.filter(h => h.type === 'reduce' && h.name !== 'Posture')
+  const focusHabit        = habits.find(h => h.name === 'Focus' && h.type === 'build')
+  const postureHabit      = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
+  const distractionsHabit = habits.find(h => h.name === 'Distractions' && h.type === 'reduce')
+
+  const creatingDistractionsRef = useRef(false)
+  useEffect(() => {
+    if (!userId || habits.length === 0 || distractionsHabit || creatingDistractionsRef.current) return
+    creatingDistractionsRef.current = true
+    supabase.from('habits').insert({
+      user_id: userId, name: 'Distractions', type: 'reduce', tracking: 'instance', has_context: false,
+    }).then(({ error }) => {
+      if (error) { console.error('Distractions habit create failed:', error); creatingDistractionsRef.current = false; return }
+      onRefresh()
+    })
+  }, [userId, habits, distractionsHabit, onRefresh])
 
   const countForHabit = (habitId) => logs.filter(l => l.habit_id === habitId).length
 
@@ -101,6 +125,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
         userId={userId}
         focusHabitId={focusHabit?.id}
         postureHabitId={postureHabit?.id}
+        distractionsHabitId={distractionsHabit?.id}
         onSessionComplete={onRefresh}
       />
 

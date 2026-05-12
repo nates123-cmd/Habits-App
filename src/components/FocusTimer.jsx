@@ -36,7 +36,9 @@ function fmtTime(date) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function FocusTimer({ userId, focusHabitId, postureHabitId, onSessionComplete }) {
+const DB_VALID_MOODS = ['bored', 'anxious', 'tired', 'fine', 'focused']
+
+export default function FocusTimer({ userId, focusHabitId, postureHabitId, distractionsHabitId, onSessionComplete }) {
   const [active,          setActive]          = useState(false)
   const [pomodoro,        setPomodoro]        = useState(true)
   const [workMins,        setWorkMins]        = useState(25)
@@ -116,7 +118,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, onSes
     setShowFullscreen(true)
   }
 
-  function logDistraction() {
+  async function logDistraction() {
     if (!distMood && !distActivity) return
     const activity = distActivity === 'Other' && distOther.trim() ? distOther.trim() : distActivity
     setDistractionsLog(prev => [
@@ -128,6 +130,18 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, onSes
         at:       fmtTime(new Date()),
       },
     ])
+    if (distractionsHabitId) {
+      const noteParts = [activity, distNotes.trim()].filter(Boolean)
+      const { error } = await supabase.from('habit_logs').insert({
+        user_id:  userId,
+        habit_id: distractionsHabitId,
+        mood:     DB_VALID_MOODS.includes(distMood) ? distMood : null,
+        notes:    noteParts.length > 0 ? noteParts.join(' — ') : null,
+        source:   'focus',
+        log_date: new Date().toISOString().slice(0, 10),
+      })
+      if (error) console.error('Distraction habit_log insert failed:', error)
+    }
     setDistMood('')
     setDistActivity('')
     setDistOther('')
