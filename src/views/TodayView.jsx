@@ -19,6 +19,18 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
     onRefresh()
   }
 
+  async function logSlouching() {
+    if (!postureHabit) return
+    await supabase.from('habit_logs').insert({
+      user_id:  userId,
+      habit_id: postureHabit.id,
+      outcome:  'slouching',
+      source:   'tick',
+      log_date: new Date().toISOString().slice(0, 10),
+    })
+    onRefresh()
+  }
+
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-bold text-white">{formatDate(new Date())}</h2>
@@ -37,16 +49,25 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
             {reduceHabits.map(h => {
               const count = countForHabit(h.id)
               return (
-                <button
-                  key={h.id}
-                  onClick={() => tapReduceHabit(h)}
-                  className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
-                >
-                  <span className="text-white font-medium text-lg">{h.name}</span>
-                  <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
-                    {count}
-                  </span>
-                </button>
+                <div key={h.id}>
+                  <button
+                    onClick={() => tapReduceHabit(h)}
+                    className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
+                  >
+                    <span className="text-white font-medium text-lg">{h.name}</span>
+                    <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                      {count}
+                    </span>
+                  </button>
+                  {h.name === 'BFRB' && postureHabit && (
+                    <button
+                      onClick={logSlouching}
+                      className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 text-center text-sm font-medium text-amber-400 transition-colors"
+                    >
+                      Slouching
+                    </button>
+                  )}
+                </div>
               )
             })}
           </div>
