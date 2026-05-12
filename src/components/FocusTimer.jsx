@@ -9,9 +9,11 @@ const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell',
 
 function chime() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  const notes = [523.25, 659.25] // C5 → E5
+  // FMaj7 arpeggio: F4-A4-C5-E5-C5-A4-F4
+  const freqs   = [349.23, 440.00, 523.25, 659.25, 523.25, 440.00, 349.23]
+  const spacing = 2 / (freqs.length - 1) // evenly spread over 2s
 
-  notes.forEach((freq, i) => {
+  freqs.forEach((freq, i) => {
     const osc  = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.connect(gain)
@@ -20,13 +22,13 @@ function chime() {
     osc.type = 'sine'
     osc.frequency.value = freq
 
-    const start = ctx.currentTime + i * 0.35
+    const start = ctx.currentTime + i * spacing
     gain.gain.setValueAtTime(0, start)
-    gain.gain.linearRampToValueAtTime(0.18, start + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.6)
+    gain.gain.linearRampToValueAtTime(0.15, start + 0.02)
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.7)
 
     osc.start(start)
-    osc.stop(start + 1.6)
+    osc.stop(start + 0.7)
   })
 }
 
