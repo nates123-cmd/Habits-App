@@ -52,7 +52,9 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
   const [slouchNotes,    setSlouchNotes]    = useState('')
   const [slouchSaving,   setSlouchSaving]   = useState(false)
 
-  const reduceHabits      = habits.filter(h => h.type === 'reduce' && h.name !== 'Posture')
+  const reduceHabits      = habits
+    .filter(h => h.type === 'reduce' && h.name !== 'Posture')
+    .filter((h, i, arr) => arr.findIndex(x => x.name === h.name) === i)
   const focusHabit        = habits.find(h => h.name === 'Focus' && h.type === 'build')
   const postureHabit      = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
   const distractionsHabit = habits.find(h => h.name === 'Distractions' && h.type === 'reduce')
@@ -61,12 +63,17 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
   useEffect(() => {
     if (!userId || habits.length === 0 || distractionsHabit || creatingDistractionsRef.current) return
     creatingDistractionsRef.current = true
-    supabase.from('habits').insert({
-      user_id: userId, name: 'Distractions', type: 'reduce', tracking: 'instance', has_context: false,
-    }).then(({ error }) => {
+    async function createIfMissing() {
+      const { data: existing } = await supabase
+        .from('habits').select('id').eq('user_id', userId).eq('name', 'Distractions').limit(1)
+      if (existing && existing.length > 0) { onRefresh(); return }
+      const { error } = await supabase.from('habits').insert({
+        user_id: userId, name: 'Distractions', type: 'reduce', tracking: 'instance', has_context: false,
+      })
       if (error) { console.error('Distractions habit create failed:', error); creatingDistractionsRef.current = false; return }
       onRefresh()
-    })
+    }
+    createIfMissing()
   }, [userId, habits, distractionsHabit, onRefresh])
 
   const countForHabit = (habitId) => logs.filter(l => l.habit_id === habitId).length
