@@ -2,10 +2,22 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/dateUtils'
 import LogContextSheet from '../components/LogContextSheet'
+import BottomSheet from '../components/BottomSheet'
 import FocusTimer from '../components/FocusTimer'
 
+const SLOUCH_ACTIVITIES = [
+  { label: 'working',     value: 'working' },
+  { label: 'exercising',  value: 'working out' },
+  { label: 'watching TV', value: 'TV' },
+  { label: 'Other',       value: 'other' },
+]
+
 export default function TodayView({ habits, logs, userId, onRefresh }) {
-  const [contextHabit, setContextHabit] = useState(null)
+  const [contextHabit,   setContextHabit]   = useState(null)
+  const [slouchOpen,     setSlouchOpen]     = useState(false)
+  const [slouchActivity, setSlouchActivity] = useState('')
+  const [slouchNotes,    setSlouchNotes]    = useState('')
+  const [slouchSaving,   setSlouchSaving]   = useState(false)
 
   const reduceHabits = habits.filter(h => h.type === 'reduce')
   const focusHabit   = habits.find(h => h.name === 'Focus' && h.type === 'build')
@@ -19,16 +31,27 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
     onRefresh()
   }
 
-  async function logSlouching() {
+  function openSlouchSheet() {
+    setSlouchActivity('')
+    setSlouchNotes('')
+    setSlouchOpen(true)
+  }
+
+  async function saveSlouching() {
     if (!postureHabit) return
+    setSlouchSaving(true)
     const { error } = await supabase.from('habit_logs').insert({
       user_id:  userId,
       habit_id: postureHabit.id,
       outcome:  'slouching',
+      activity: slouchActivity || null,
+      notes:    slouchNotes.trim() || null,
       source:   'tick',
       log_date: new Date().toISOString().slice(0, 10),
     })
+    setSlouchSaving(false)
     if (error) { console.error('Slouching insert failed:', error); alert(`Could not log slouching: ${error.message}`); return }
+    setSlouchOpen(false)
     onRefresh()
   }
 
@@ -66,7 +89,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                   </button>
                   {h.name === 'BFRB' && postureHabit && (
                     <button
-                      onClick={logSlouching}
+                      onClick={openSlouchSheet}
                       className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 px-4 flex items-center justify-between text-sm font-medium text-amber-400 transition-colors"
                     >
                       <span>Slouching</span>
@@ -87,6 +110,50 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
           onDone={() => { setContextHabit(null); onRefresh() }}
           onClose={() => setContextHabit(null)}
         />
+      )}
+
+      {slouchOpen && (
+        <BottomSheet title="Log — Slouching" onClose={() => setSlouchOpen(false)}>
+          <div className="space-y-5">
+            <div>
+              <p className="text-gray-400 text-sm mb-2">Activity</p>
+              <div className="flex gap-2 flex-wrap">
+                {SLOUCH_ACTIVITIES.map(a => (
+                  <button
+                    key={a.value}
+                    onClick={() => setSlouchActivity(slouchActivity === a.value ? '' : a.value)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
+                      slouchActivity === a.value
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-gray-400 text-sm mb-2">Notes (optional)</p>
+              <textarea autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                value={slouchNotes}
+                onChange={e => setSlouchNotes(e.target.value)}
+                rows={2}
+                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm placeholder-gray-500"
+                placeholder="Anything else?"
+              />
+            </div>
+
+            <button
+              onClick={saveSlouching}
+              disabled={slouchSaving}
+              className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
+            >
+              {slouchSaving ? 'Logging…' : 'Log it'}
+            </button>
+          </div>
+        </BottomSheet>
       )}
     </div>
   )
