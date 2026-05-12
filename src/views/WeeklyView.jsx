@@ -8,7 +8,6 @@ import { thisWeekDays } from '../lib/dateUtils'
 export default function WeeklyView({ habits, userId }) {
   const [weekLogs,      setWeekLogs]      = useState([])
   const [focusSessions, setFocusSessions] = useState([])
-  const [postureLogs,   setPostureLogs]   = useState([])
   const weekDays = thisWeekDays()
 
   useEffect(() => {
@@ -17,14 +16,12 @@ export default function WeeklyView({ habits, userId }) {
     const end   = weekDays[6].end
 
     async function load() {
-      const [{ data: logs }, { data: sessions }, { data: posture }] = await Promise.all([
+      const [{ data: logs }, { data: sessions }] = await Promise.all([
         supabase.from('habit_logs').select('*').gte('logged_at', start).lt('logged_at', end),
         supabase.from('focus_sessions').select('*').eq('completed', true).gte('started_at', start).lt('started_at', end),
-        supabase.from('posture_logs').select('*').gte('logged_at', start).lt('logged_at', end),
       ])
-      if (logs)    setWeekLogs(logs)
+      if (logs)     setWeekLogs(logs)
       if (sessions) setFocusSessions(sessions)
-      if (posture)  setPostureLogs(posture)
     }
     load()
   }, [userId])
@@ -57,6 +54,13 @@ export default function WeeklyView({ habits, userId }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 
+  function outcomeBreakdown(habitId) {
+    const relevant = weekLogs.filter(l => l.habit_id === habitId && l.outcome)
+    const counts = {}
+    relevant.forEach(l => { counts[l.outcome] = (counts[l.outcome] || 0) + 1 })
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])
+  }
+
   function typeBreakdown(habitId) {
     const relevant = weekLogs.filter(l => l.habit_id === habitId && l.notes)
     const counts = {}
@@ -83,20 +87,7 @@ export default function WeeklyView({ habits, userId }) {
     return Math.round((daysWithLog / 7) * 100)
   }
 
-  function postureByHour() {
-    return Array.from({ length: 17 }, (_, i) => i + 6).map(h => {
-      const inHour = postureLogs.filter(l => new Date(l.logged_at).getHours() === h)
-      return {
-        hour: `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`,
-        good:      inHour.filter(l => l.outcome === 'good').length,
-        slouching: inHour.filter(l => l.outcome === 'slouching').length,
-      }
-    })
-  }
-
   const totalFocusMinutes = focusSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
-  const postureData = postureByHour()
-  const hasPosture  = postureLogs.length > 0
 
   return (
     <div className="space-y-8">
@@ -115,45 +106,6 @@ export default function WeeklyView({ habits, userId }) {
             <p className="text-xs text-gray-500 mt-0.5">Sessions</p>
           </div>
         </div>
-      </section>
-
-      {/* Posture */}
-      <section className="bg-gray-800 rounded-2xl p-4">
-        <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">Posture</p>
-        {hasPosture ? (
-          <>
-            <div className="flex gap-4 mb-4">
-              <div>
-                <p className="text-2xl font-bold text-emerald-400">
-                  {postureLogs.filter(l => l.outcome === 'good').length}
-                </p>
-                <p className="text-xs text-gray-500">Good</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-amber-400">
-                  {postureLogs.filter(l => l.outcome === 'slouching').length}
-                </p>
-                <p className="text-xs text-gray-500">Slouching</p>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500 mb-2">Time of day</p>
-            <ResponsiveContainer width="100%" height={100}>
-              <BarChart data={postureData} barSize={10} barGap={0}>
-                <XAxis dataKey="hour" tick={{ fill: '#6b7280', fontSize: 9 }} axisLine={false} tickLine={false} interval={2} />
-                <YAxis hide allowDecimals={false} />
-                <Tooltip
-                  contentStyle={{ background: '#1f2937', border: 'none', borderRadius: 8 }}
-                  labelStyle={{ color: '#d1d5db' }}
-                  cursor={{ fill: '#374151' }}
-                />
-                <Bar dataKey="good"      stackId="a" fill="#34d399" radius={[0,0,2,2]} name="Good" />
-                <Bar dataKey="slouching" stackId="a" fill="#f59e0b" radius={[2,2,0,0]} name="Slouching" />
-              </BarChart>
-            </ResponsiveContainer>
-          </>
-        ) : (
-          <p className="text-gray-600 text-sm">No posture checks this week.</p>
-        )}
       </section>
 
       {/* Reduce habits */}
@@ -186,9 +138,18 @@ export default function WeeklyView({ habits, userId }) {
                     </BarChart>
                   </ResponsiveContainer>
                   {(() => {
-                    const types = h.name === 'BFRB' ? typeBreakdown(h.id) : []
-                    return (moods.length > 0 || acts.length > 0 || types.length > 0) && (
+                    const types    = h.name === 'BFRB' ? typeBreakdown(h.id) : []
+                    const outcomes = outcomeBreakdown(h.id)
+                    return (moods.length > 0 || acts.length > 0 || types.length > 0 || outcomes.length > 0) && (
                       <div className="mt-3 flex gap-4 flex-wrap">
+                        {outcomes.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Outcome</p>
+                            {outcomes.map(([o, c]) => (
+                              <p key={o} className="text-sm text-gray-300 capitalize">{o.replace('_', ' ')} <span className="text-gray-500">×{c}</span></p>
+                            ))}
+                          </div>
+                        )}
                         {types.length > 0 && (
                           <div>
                             <p className="text-xs text-gray-500 mb-1">Type</p>

@@ -35,7 +35,7 @@ create table if not exists habit_logs (
   mood       text check (mood in ('bored', 'anxious', 'tired', 'fine', 'focused')),
   activity   text check (activity in ('driving', 'phone', 'working', 'working out', 'TV', 'other')),
   notes      text,
-  outcome    text check (outcome in ('acted', 'caught_mid', 'urge_only')),
+  outcome    text check (outcome in ('acted', 'caught_mid', 'urge_only', 'good', 'slouching')),
   source     text default 'tick',
   log_date   date
 );
@@ -120,6 +120,7 @@ begin
   insert into habits (user_id, name, type, tracking, has_context) values
     -- Reduce habits
     (p_user_id, 'BFRB',           'reduce', 'instance', true),
+    (p_user_id, 'Posture',        'reduce', 'instance', true),
     -- Build habits
     (p_user_id, 'Gym',            'build',  'checkbox', false),
     (p_user_id, 'Healthy Eating', 'build',  'checkbox', false),
