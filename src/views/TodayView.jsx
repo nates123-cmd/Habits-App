@@ -21,15 +21,20 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
 
   async function logSlouching() {
     if (!postureHabit) return
-    await supabase.from('habit_logs').insert({
+    const { error } = await supabase.from('habit_logs').insert({
       user_id:  userId,
       habit_id: postureHabit.id,
       outcome:  'slouching',
       source:   'tick',
       log_date: new Date().toISOString().slice(0, 10),
     })
+    if (error) { console.error('Slouching insert failed:', error); alert(`Could not log slouching: ${error.message}`); return }
     onRefresh()
   }
+
+  const slouchCount = postureHabit
+    ? logs.filter(l => l.habit_id === postureHabit.id && l.outcome === 'slouching').length
+    : 0
 
   return (
     <div className="space-y-6">
@@ -62,9 +67,10 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                   {h.name === 'BFRB' && postureHabit && (
                     <button
                       onClick={logSlouching}
-                      className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 text-center text-sm font-medium text-amber-400 transition-colors"
+                      className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 px-4 flex items-center justify-between text-sm font-medium text-amber-400 transition-colors"
                     >
-                      Slouching
+                      <span>Slouching</span>
+                      <span className="tabular-nums">{slouchCount > 0 ? `×${slouchCount}` : ''}</span>
                     </button>
                   )}
                 </div>
