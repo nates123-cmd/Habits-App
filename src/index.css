@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  background-color: #030712;
+}
+
 /* Bottom sheet slide-up animation */
 @keyframes slide-up {
   from { transform: translateY(100%); }
