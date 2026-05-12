@@ -39,7 +39,7 @@
   <div class="option"><div class="label">5 — Major chord hit (C5-E5-G5)</div>
     <button onclick="majorChord()">Play</button></div>
 
-  <div class="option"><div class="label">6 — Warm resolution (FMaj7 → CMaj7)</div>
+  <div class="option"><div class="label">6 — Resolution (C dominant 7 → FMaj7)</div>
     <button onclick="warmResolution()">Play</button></div>
 
   <div class="option"><div class="label">7 — Pentatonic rise (C-D-E-G quick)</div>
@@ -104,11 +104,11 @@
       chord(ac, [523.25, 659.25, 783.99], ac.currentTime, 0.12, 1.5)
     }
 
-    // 6 — Warm resolution (FMaj7 → CMaj7)
+    // 6 — C dominant 7 → FMaj7
     function warmResolution() {
       const ac = ctx()
-      chord(ac, [349.23, 440.00, 523.25, 659.25], ac.currentTime, 0.1, 1.0)
-      chord(ac, [261.63, 523.25, 659.25, 783.99], ac.currentTime + 0.5, 0.1, 1.5)
+      chord(ac, [261.63, 329.63, 392.00, 466.16], ac.currentTime, 0.1, 0.9)       // C7: C4-E4-G4-Bb4
+      chord(ac, [349.23, 440.00, 523.25, 659.25], ac.currentTime + 0.5, 0.12, 1.5) // FMaj7: F4-A4-C5-E5
     }
 
     // 7 — Pentatonic rise
