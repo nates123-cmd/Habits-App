@@ -16,21 +16,18 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
   if (name === 'BFRB') {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8 13V6a1.5 1.5 0 0 1 3 0v6" />
-        <path d="M11 12V4.5a1.5 1.5 0 0 1 3 0V12" />
-        <path d="M14 12V6a1.5 1.5 0 0 1 3 0v6" />
-        <path d="M17 10.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5h-1a4 4 0 0 1-3.4-1.9L7 14.5" />
+        <path d="M12 12a1.5 1.5 0 1 1 1.5 1.5A3 3 0 0 1 10.5 10.5 4.5 4.5 0 0 1 15 6a6 6 0 0 1 6 6 7.5 7.5 0 0 1-15 0" />
       </svg>
     )
   }
   if (name === 'Slouching') {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9.5" cy="5" r="2.5" />
-        <path d="M10 7.5c-1.5 2.5-2 5.5-.5 8" />
-        <path d="M9.5 15.5c1.5-1 4-1 6 0l2.5 1" />
-        <path d="M9 21l.5-5.5" />
-        <path d="M13 17.5L15.5 21" />
+        <circle cx="11" cy="5" r="2.5" />
+        <path d="M11 7.5C9.5 10 8.5 12.5 9.5 15.5" />
+        <path d="M9.5 15.5C11 17 14 17 16.5 16.5" />
+        <path d="M9 21l1-5.5" />
+        <path d="M14 16.5l2 4.5" />
       </svg>
     )
   }
