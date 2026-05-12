@@ -9,6 +9,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
 
   const reduceHabits = habits.filter(h => h.type === 'reduce')
   const focusHabit   = habits.find(h => h.name === 'Focus' && h.type === 'build')
+  const postureHabit = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
 
   const countForHabit = (habitId) => logs.filter(l => l.habit_id === habitId).length
 
@@ -25,6 +26,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
       <FocusTimer
         userId={userId}
         focusHabitId={focusHabit?.id}
+        postureHabitId={postureHabit?.id}
         onSessionComplete={onRefresh}
       />
 

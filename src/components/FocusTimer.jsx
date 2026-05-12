@@ -36,7 +36,7 @@ function fmtTime(date) {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) {
+export default function FocusTimer({ userId, focusHabitId, postureHabitId, onSessionComplete }) {
   const [active,          setActive]          = useState(false)
   const [pomodoro,        setPomodoro]        = useState(true)
   const [workMins,        setWorkMins]        = useState(25)
@@ -468,10 +468,11 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
                   <button
                     key={o.value}
                     onClick={async () => {
-                      if (phaseEndPosture) return
+                      if (phaseEndPosture || !postureHabitId) return
                       setPhaseEndPosture(o.value)
-                      await supabase.from('posture_logs').insert({
+                      await supabase.from('habit_logs').insert({
                         user_id:  userId,
+                        habit_id: postureHabitId,
                         outcome:  o.value,
                         source:   'pomodoro',
                         log_date: new Date().toISOString().slice(0, 10),
