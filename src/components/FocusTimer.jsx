@@ -719,14 +719,12 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                   <button
                     key={o.value}
                     onClick={async () => {
-                      if (phaseEndPosture || !postureHabitId) return
+                      if (phaseEndPosture) return
                       setPhaseEndPosture(o.value)
-                      await supabase.from('habit_logs').insert({
-                        user_id:  userId,
-                        habit_id: postureHabitId,
-                        outcome:  o.value,
-                        source:   'pomodoro',
-                        log_date: new Date().toISOString().slice(0, 10),
+                      await supabase.from('posture_logs').insert({
+                        user_id: userId,
+                        outcome: o.value,
+                        source:  'pomodoro',
                       })
                     }}
                     className={`flex-1 ${o.color} text-white font-medium rounded-xl py-3 transition-colors`}

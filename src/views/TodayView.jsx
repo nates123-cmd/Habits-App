@@ -2,15 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/dateUtils'
 import LogContextSheet from '../components/LogContextSheet'
-import BottomSheet from '../components/BottomSheet'
 import FocusTimer from '../components/FocusTimer'
-
-const SLOUCH_ACTIVITIES = [
-  { label: 'working',     value: 'working' },
-  { label: 'exercising',  value: 'working out' },
-  { label: 'watching TV', value: 'TV' },
-  { label: 'Other',       value: 'other' },
-]
 
 function HabitIcon({ name, className = 'w-6 h-6' }) {
   if (name === 'BFRB') {
@@ -45,18 +37,14 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
   return null
 }
 
-export default function TodayView({ habits, logs, userId, onRefresh }) {
-  const [contextHabit,   setContextHabit]   = useState(null)
-  const [slouchOpen,     setSlouchOpen]     = useState(false)
-  const [slouchActivity, setSlouchActivity] = useState('')
-  const [slouchNotes,    setSlouchNotes]    = useState('')
-  const [slouchSaving,   setSlouchSaving]   = useState(false)
+export default function TodayView({ habits, logs, postureCounts = { good: 0, slouching: 0 }, userId, onRefresh }) {
+  const [contextHabit, setContextHabit]   = useState(null)
+  const [posturePending, setPosturePending] = useState(false)
 
   const reduceHabits      = habits
     .filter(h => h.type === 'reduce' && h.name !== 'Posture')
     .filter((h, i, arr) => arr.findIndex(x => x.name === h.name) === i)
   const focusHabit        = habits.find(h => h.name === 'Focus' && h.type === 'build')
-  const postureHabit      = habits.find(h => h.name === 'Posture' && h.type === 'reduce')
   const distractionsHabit = habits.find(h => h.name === 'Distractions' && h.type === 'reduce')
 
   const creatingDistractionsRef = useRef(false)
@@ -84,45 +72,18 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
     onRefresh()
   }
 
-  function openSlouchSheet() {
-    setSlouchActivity('')
-    setSlouchNotes('')
-    setSlouchOpen(true)
-  }
-
-  async function ensurePostureHabit() {
-    if (postureHabit) return postureHabit.id
-    const { data, error } = await supabase
-      .from('habits')
-      .insert({ user_id: userId, name: 'Posture', type: 'reduce', tracking: 'instance', has_context: true })
-      .select()
-      .single()
-    if (error) { console.error('Posture habit create failed:', error); alert(`Could not create Posture habit: ${error.message}`); return null }
-    return data.id
-  }
-
-  async function saveSlouching() {
-    setSlouchSaving(true)
-    const habitId = await ensurePostureHabit()
-    if (!habitId) { setSlouchSaving(false); return }
-    const { error } = await supabase.from('habit_logs').insert({
-      user_id:  userId,
-      habit_id: habitId,
-      outcome:  'slouching',
-      activity: slouchActivity || null,
-      notes:    slouchNotes.trim() || null,
-      source:   'tick',
-      log_date: new Date().toISOString().slice(0, 10),
+  async function logPosture(outcome) {
+    if (posturePending) return
+    setPosturePending(true)
+    const { error } = await supabase.from('posture_logs').insert({
+      user_id: userId,
+      outcome,
+      source:  'manual',
     })
-    setSlouchSaving(false)
-    if (error) { console.error('Slouching insert failed:', error); alert(`Could not log slouching: ${error.message}`); return }
-    setSlouchOpen(false)
+    setPosturePending(false)
+    if (error) { console.error('Posture insert failed:', error); alert(`Could not log: ${error.message}`); return }
     onRefresh()
   }
-
-  const slouchCount = postureHabit
-    ? logs.filter(l => l.habit_id === postureHabit.id && l.outcome === 'slouching').length
-    : 0
 
   return (
     <div className="space-y-6">
@@ -131,10 +92,38 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
       <FocusTimer
         userId={userId}
         focusHabitId={focusHabit?.id}
-        postureHabitId={postureHabit?.id}
         distractionsHabitId={distractionsHabit?.id}
         onSessionComplete={onRefresh}
       />
+
+      <section>
+        <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">Posture</p>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => logPosture('good')}
+            disabled={posturePending}
+            className="flex items-center justify-between bg-gray-800 active:bg-gray-700 disabled:opacity-60 rounded-2xl px-5 py-4 transition-colors"
+          >
+            <span className="text-white font-medium text-lg">Good</span>
+            <span className={`text-3xl font-bold tabular-nums ${postureCounts.good > 0 ? 'text-emerald-400' : 'text-gray-600'}`}>
+              {postureCounts.good}
+            </span>
+          </button>
+          <button
+            onClick={() => logPosture('slouching')}
+            disabled={posturePending}
+            className="flex items-center justify-between bg-gray-800 active:bg-gray-700 disabled:opacity-60 rounded-2xl px-5 py-4 transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <HabitIcon name="Slouching" className={`w-5 h-5 ${postureCounts.slouching > 0 ? 'text-amber-400' : 'text-gray-500'}`} />
+              <span className="text-white font-medium text-lg">Slouching</span>
+            </span>
+            <span className={`text-3xl font-bold tabular-nums ${postureCounts.slouching > 0 ? 'text-amber-400' : 'text-gray-600'}`}>
+              {postureCounts.slouching}
+            </span>
+          </button>
+        </div>
+      </section>
 
       {reduceHabits.length > 0 && (
         <section>
@@ -156,20 +145,6 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                       {count}
                     </span>
                   </button>
-                  {h.name === 'BFRB' && (
-                    <button
-                      onClick={openSlouchSheet}
-                      className="w-full mt-3 flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
-                    >
-                      <span className="flex items-center gap-3">
-                        <HabitIcon name="Slouching" className={`w-6 h-6 ${slouchCount > 0 ? 'text-amber-400' : 'text-gray-500'}`} />
-                        <span className="text-white font-medium text-lg">Slouching</span>
-                      </span>
-                      <span className={`text-3xl font-bold tabular-nums ${slouchCount > 0 ? 'text-amber-400' : 'text-gray-600'}`}>
-                        {slouchCount}
-                      </span>
-                    </button>
-                  )}
                 </div>
               )
             })}
@@ -186,49 +161,6 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
         />
       )}
 
-      {slouchOpen && (
-        <BottomSheet title="Log — Slouching" onClose={() => setSlouchOpen(false)}>
-          <div className="space-y-5">
-            <div>
-              <p className="text-gray-400 text-sm mb-2">Activity</p>
-              <div className="flex gap-2 flex-wrap">
-                {SLOUCH_ACTIVITIES.map(a => (
-                  <button
-                    key={a.value}
-                    onClick={() => setSlouchActivity(slouchActivity === a.value ? '' : a.value)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${
-                      slouchActivity === a.value
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                    }`}
-                  >
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-gray-400 text-sm mb-2">Notes (optional)</p>
-              <textarea autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
-                value={slouchNotes}
-                onChange={e => setSlouchNotes(e.target.value)}
-                rows={2}
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-amber-500 resize-none text-sm placeholder-gray-500"
-                placeholder="Anything else?"
-              />
-            </div>
-
-            <button
-              onClick={saveSlouching}
-              disabled={slouchSaving}
-              className="w-full bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
-            >
-              {slouchSaving ? 'Logging…' : 'Log it'}
-            </button>
-          </div>
-        </BottomSheet>
-      )}
     </div>
   )
 }

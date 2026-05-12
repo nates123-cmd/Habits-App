@@ -13,7 +13,7 @@ export default function App() {
   const { session, loading: authLoading } = useAuth()
   const userId = session?.user?.id
   const { habits, loading: habitsLoading, refetch: refetchHabits } = useHabits(userId)
-  const { logs, refetch: refetchLogs } = useTodayLogs(userId)
+  const { logs, postureCounts, refetch: refetchLogs } = useTodayLogs(userId)
   const [view, setView] = useState('today')
   const [seeded, setSeeded] = useState(false)
   const [merged, setMerged] = useState(false)
@@ -64,7 +64,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-950 text-white">
       <main className="max-w-lg mx-auto px-4 pt-8 pb-24">
-        {view === 'today'   && <TodayView   habits={habits} logs={logs}   userId={userId} onRefresh={handleRefresh} />}
+        {view === 'today'   && <TodayView   habits={habits} logs={logs} postureCounts={postureCounts} userId={userId} onRefresh={handleRefresh} />}
         {view === 'weekly'  && <WeeklyView  habits={habits}               userId={userId} />}
         {view === 'history' && <HistoryView habits={habits}               userId={userId} />}
       </main>
