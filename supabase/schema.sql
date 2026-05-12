@@ -52,13 +52,23 @@ create table if not exists focus_sessions (
   source            text default 'tick'
 );
 
+create table if not exists posture_logs (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users(id) on delete cascade,
+  outcome    text not null check (outcome in ('good', 'slouching')),
+  source     text default 'manual' check (source in ('manual', 'pomodoro')),
+  logged_at  timestamptz not null default now(),
+  log_date   date not null default current_date
+);
+
 -- ============================================================
 -- INDEXES
 -- ============================================================
 
-create index if not exists habit_logs_user_habit_idx on habit_logs(user_id, habit_id);
+create index if not exists habit_logs_user_habit_idx  on habit_logs(user_id, habit_id);
 create index if not exists habit_logs_logged_at_idx   on habit_logs(logged_at desc);
 create index if not exists focus_sessions_user_idx    on focus_sessions(user_id, started_at desc);
+create index if not exists posture_logs_user_date_idx on posture_logs(user_id, log_date desc);
 
 -- ============================================================
 -- ROW-LEVEL SECURITY
@@ -67,6 +77,7 @@ create index if not exists focus_sessions_user_idx    on focus_sessions(user_id,
 alter table habits         enable row level security;
 alter table habit_logs     enable row level security;
 alter table focus_sessions enable row level security;
+alter table posture_logs   enable row level security;
 
 -- habits
 create policy "habits: select own"  on habits for select using (auth.uid() = user_id);
@@ -79,6 +90,10 @@ create policy "habit_logs: select own"  on habit_logs for select using (auth.uid
 create policy "habit_logs: insert own"  on habit_logs for insert with check (auth.uid() = user_id);
 create policy "habit_logs: update own"  on habit_logs for update using (auth.uid() = user_id);
 create policy "habit_logs: delete own"  on habit_logs for delete using (auth.uid() = user_id);
+
+-- posture_logs
+create policy "posture: select own" on posture_logs for select using (auth.uid() = user_id);
+create policy "posture: insert own" on posture_logs for insert with check (auth.uid() = user_id);
 
 -- focus_sessions
 create policy "focus: select own"  on focus_sessions for select using (auth.uid() = user_id);

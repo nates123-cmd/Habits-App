@@ -47,6 +47,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   const [showFullscreen,  setShowFullscreen]  = useState(false)
   const [showDistraction, setShowDistraction] = useState(false)
   const [showPhaseEnd,    setShowPhaseEnd]    = useState(false)
+  const [phaseEndPosture, setPhaseEndPosture] = useState(null)
   const [distractionsLog, setDistractionsLog] = useState([])
   const [distMood,        setDistMood]        = useState('')
   const [distActivity,    setDistActivity]    = useState('')
@@ -70,6 +71,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
           setElapsed(workMins * 60)
           chime()
           navigator.vibrate?.([200, 100, 200])
+          setPhaseEndPosture(null)
           setShowPhaseEnd(true)
         } else if (pomodoro && phase === 'break' && secs >= POMODORO_BREAK) {
           startTimeRef.current = Date.now()
@@ -455,6 +457,35 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
       {showPhaseEnd && (
         <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col items-center justify-center px-8 gap-6">
           <p className="text-white text-3xl font-bold text-center">{workMins} minutes done</p>
+
+          {/* Posture check */}
+          <div className="w-full">
+            <p className="text-gray-400 text-xs uppercase tracking-widest text-center mb-3">Posture check</p>
+            <div className="flex gap-3">
+              {[{ value: 'good', label: 'Good', color: phaseEndPosture === 'good' ? 'bg-emerald-600' : 'bg-gray-800' },
+                { value: 'slouching', label: 'Slouching', color: phaseEndPosture === 'slouching' ? 'bg-amber-600' : 'bg-gray-800' }]
+                .map(o => (
+                  <button
+                    key={o.value}
+                    onClick={async () => {
+                      if (phaseEndPosture) return
+                      setPhaseEndPosture(o.value)
+                      await supabase.from('posture_logs').insert({
+                        user_id:  userId,
+                        outcome:  o.value,
+                        source:   'pomodoro',
+                        log_date: new Date().toISOString().slice(0, 10),
+                      })
+                    }}
+                    className={`flex-1 ${o.color} text-white font-medium rounded-xl py-3 transition-colors`}
+                  >
+                    {o.value === phaseEndPosture ? '✓ ' : ''}{o.label}
+                  </button>
+                ))
+              }
+            </div>
+          </div>
+
           <p className="text-gray-400 text-center">What do you want to do?</p>
           <button
             onClick={() => {

@@ -1,11 +1,25 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatDate } from '../lib/dateUtils'
 import LogContextSheet from '../components/LogContextSheet'
 import FocusTimer from '../components/FocusTimer'
 
 export default function TodayView({ habits, logs, userId, onRefresh }) {
-  const [contextHabit, setContextHabit] = useState(null)
+  const [contextHabit,  setContextHabit]  = useState(null)
+  const [postureLogs,   setPostureLogs]   = useState([])
+
+  const today = new Date().toISOString().slice(0, 10)
+
+  const fetchPosture = useCallback(async () => {
+    const { data } = await supabase
+      .from('posture_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('log_date', today)
+    if (data) setPostureLogs(data)
+  }, [userId, today])
+
+  useEffect(() => { if (userId) fetchPosture() }, [userId, fetchPosture])
 
   const reduceHabits = habits.filter(h => h.type === 'reduce')
   const focusHabit   = habits.find(h => h.name === 'Focus' && h.type === 'build')
@@ -13,13 +27,24 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
   const countForHabit = (habitId) => logs.filter(l => l.habit_id === habitId).length
 
   async function tapReduceHabit(habit) {
-    if (habit.has_context) {
-      setContextHabit(habit)
-      return
-    }
+    if (habit.has_context) { setContextHabit(habit); return }
     await supabase.from('habit_logs').insert({ user_id: userId, habit_id: habit.id })
     onRefresh()
   }
+
+  async function logPosture(outcome) {
+    setPostureLogs(prev => [...prev, { outcome }]) // optimistic
+    await supabase.from('posture_logs').insert({
+      user_id:  userId,
+      outcome,
+      source:   'manual',
+      log_date: today,
+    })
+    fetchPosture()
+  }
+
+  const goodCount    = postureLogs.filter(l => l.outcome === 'good').length
+  const slouchCount  = postureLogs.filter(l => l.outcome === 'slouching').length
 
   return (
     <div className="space-y-6">
@@ -30,6 +55,27 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
         focusHabitId={focusHabit?.id}
         onSessionComplete={onRefresh}
       />
+
+      {/* Posture */}
+      <section>
+        <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">Posture</p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => logPosture('good')}
+            className="flex-1 bg-gray-800 active:bg-emerald-900 rounded-2xl px-4 py-4 text-center transition-colors"
+          >
+            <p className="text-white font-semibold">Good</p>
+            {goodCount > 0 && <p className="text-emerald-400 text-sm mt-0.5">×{goodCount}</p>}
+          </button>
+          <button
+            onClick={() => logPosture('slouching')}
+            className="flex-1 bg-gray-800 active:bg-amber-900 rounded-2xl px-4 py-4 text-center transition-colors"
+          >
+            <p className="text-white font-semibold">Slouching</p>
+            {slouchCount > 0 && <p className="text-amber-400 text-sm mt-0.5">×{slouchCount}</p>}
+          </button>
+        </div>
+      </section>
 
       {reduceHabits.length > 0 && (
         <section>
