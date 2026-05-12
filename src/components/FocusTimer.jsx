@@ -439,28 +439,28 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
 
           <div className="px-6 pb-16 space-y-3">
             {phase !== 'break' && (todos.length > 0 || showTodoInput) && (
-              <div className="space-y-1.5 pb-2">
+              <div className="space-y-3 pb-3">
                 {todos.map(t => (
-                  <div key={t.id} className="flex items-center gap-2.5">
+                  <div key={t.id} className="flex items-center gap-3">
                     <button
                       onClick={() => toggleTodo(t.id)}
-                      className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                      className={`w-7 h-7 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
                         t.done ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
                       }`}
                       aria-label={t.done ? 'Mark as not done' : 'Mark as done'}
                     >
                       {t.done && (
-                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       )}
                     </button>
-                    <span className={`flex-1 text-sm ${t.done ? 'line-through text-gray-500' : 'text-gray-200'}`}>
+                    <span className={`flex-1 text-lg ${t.done ? 'line-through text-gray-500' : 'text-gray-100'}`}>
                       {t.text}
                     </span>
                     <button
                       onClick={() => removeTodo(t.id)}
-                      className="text-gray-700 hover:text-gray-500 text-base px-1"
+                      className="text-gray-700 hover:text-gray-500 text-xl px-1"
                       aria-label="Remove task"
                     >
                       ×
@@ -473,7 +473,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                   onChange={e => setTodoInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addTodo() }}
                   placeholder="Add a task…"
-                  className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 placeholder-gray-500"
+                  className="w-full bg-gray-800/60 text-white rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500"
                 />
               </div>
             )}
