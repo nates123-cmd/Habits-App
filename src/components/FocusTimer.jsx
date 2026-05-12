@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import BottomSheet from './BottomSheet'
 
-const POMODORO_WORK  = 25 * 60
-const POMODORO_BREAK = 5  * 60
+const POMODORO_BREAK   = 5  * 60
+const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60]
 const MOODS          = ['bored', 'anxious', 'tired', 'fine', 'unsure']
 const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
 
@@ -43,6 +43,8 @@ function fmtTime(date) {
 export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) {
   const [active,          setActive]          = useState(false)
   const [pomodoro,        setPomodoro]        = useState(true)
+  const [workMins,        setWorkMins]        = useState(25)
+  const [customMins,      setCustomMins]      = useState('')
   const [elapsed,         setElapsed]         = useState(0)
   const [phase,           setPhase]           = useState('work')
   const [sessionId,       setSessionId]       = useState(null)
@@ -67,9 +69,9 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
     if (active) {
       intervalRef.current = setInterval(() => {
         const secs = Math.floor((Date.now() - startTimeRef.current) / 1000)
-        if (pomodoro && phase === 'work' && secs >= POMODORO_WORK) {
+        if (pomodoro && phase === 'work' && secs >= workMins * 60) {
           setActive(false)
-          setElapsed(POMODORO_WORK)
+          setElapsed(workMins * 60)
           chime()
           navigator.vibrate?.([200, 100, 200])
           setShowPhaseEnd(true)
@@ -178,7 +180,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
   }
 
   const displayTime = pomodoro
-    ? fmt((phase === 'work' ? POMODORO_WORK : POMODORO_BREAK) - elapsed)
+    ? fmt((phase === 'work' ? workMins * 60 : POMODORO_BREAK) - elapsed)
     : fmt(elapsed)
 
   return (
@@ -211,10 +213,43 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
           <span className="text-5xl font-mono font-bold text-white tabular-nums">{displayTime}</span>
           {pomodoro && active && (
             <p className="text-xs text-gray-500 mt-1 uppercase tracking-wide">
-              {phase === 'work' ? '25 min work' : '5 min break'}
+              {phase === 'work' ? `${workMins} min work` : '5 min break'}
             </p>
           )}
         </div>
+
+        {!active && pomodoro && (
+          <div>
+            <div className="flex gap-2 flex-wrap">
+              {DURATION_OPTIONS.map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setWorkMins(m); setCustomMins('') }}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    workMins === m && customMins === ''
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {m}m
+                </button>
+              ))}
+              <input
+                type="number"
+                min={1}
+                max={180}
+                placeholder="Custom"
+                value={customMins}
+                onChange={e => {
+                  setCustomMins(e.target.value)
+                  const v = parseInt(e.target.value)
+                  if (v > 0) setWorkMins(v)
+                }}
+                className="w-20 bg-gray-700 text-white rounded-full px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 text-center"
+              />
+            </div>
+          </div>
+        )}
 
         {!active && (
           <input
@@ -407,7 +442,7 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
       {/* Work phase end prompt */}
       {showPhaseEnd && (
         <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col items-center justify-center px-8 gap-6">
-          <p className="text-white text-3xl font-bold text-center">25 minutes done</p>
+          <p className="text-white text-3xl font-bold text-center">{workMins} minutes done</p>
           <p className="text-gray-400 text-center">What do you want to do?</p>
           <button
             onClick={() => {
