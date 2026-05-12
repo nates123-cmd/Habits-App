@@ -305,24 +305,38 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8">
-            {topic && (
-              <p className="text-5xl font-bold text-white text-center leading-tight">{topic}</p>
-            )}
+            <p className="text-5xl font-bold text-white text-center leading-tight">
+              {phase === 'break' ? 'Break' : (topic || '')}
+            </p>
             <span className="text-3xl font-mono text-gray-500 tabular-nums">{displayTime}</span>
             {pomodoro && (
               <p className="text-xs text-gray-600 uppercase tracking-widest">
-                {phase === 'work' ? 'Focus' : 'Break'}
+                {phase === 'work' ? 'Focus' : ''}
               </p>
             )}
           </div>
 
           <div className="px-6 pb-16 space-y-3">
-            <button
-              onClick={() => setShowDistraction(true)}
-              className="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-2xl py-4 text-lg transition-colors"
-            >
-              Distraction
-            </button>
+            {phase === 'break' ? (
+              <button
+                onClick={() => {
+                  setPhase('work')
+                  startTimeRef.current = Date.now()
+                  setElapsed(0)
+                  setActive(true)
+                }}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl py-4 text-lg transition-colors"
+              >
+                Hop back in
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowDistraction(true)}
+                className="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-2xl py-4 text-lg transition-colors"
+              >
+                Distraction
+              </button>
+            )}
             <button
               onClick={endSession}
               className="w-full bg-gray-800 hover:bg-gray-700 text-red-400 font-semibold rounded-2xl py-4 transition-colors"
