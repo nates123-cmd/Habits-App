@@ -12,6 +12,31 @@ const SLOUCH_ACTIVITIES = [
   { label: 'Other',       value: 'other' },
 ]
 
+function HabitIcon({ name, className = 'w-6 h-6' }) {
+  if (name === 'BFRB') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M8 13V6a1.5 1.5 0 0 1 3 0v6" />
+        <path d="M11 12V4.5a1.5 1.5 0 0 1 3 0V12" />
+        <path d="M14 12V6a1.5 1.5 0 0 1 3 0v6" />
+        <path d="M17 10.5a1.5 1.5 0 0 1 3 0V15a5 5 0 0 1-5 5h-1a4 4 0 0 1-3.4-1.9L7 14.5" />
+      </svg>
+    )
+  }
+  if (name === 'Slouching') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9.5" cy="5" r="2.5" />
+        <path d="M10 7.5c-1.5 2.5-2 5.5-.5 8" />
+        <path d="M9.5 15.5c1.5-1 4-1 6 0l2.5 1" />
+        <path d="M9 21l.5-5.5" />
+        <path d="M13 17.5L15.5 21" />
+      </svg>
+    )
+  }
+  return null
+}
+
 export default function TodayView({ habits, logs, userId, onRefresh }) {
   const [contextHabit,   setContextHabit]   = useState(null)
   const [slouchOpen,     setSlouchOpen]     = useState(false)
@@ -94,7 +119,10 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                     onClick={() => tapReduceHabit(h)}
                     className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                   >
-                    <span className="text-white font-medium text-lg">{h.name}</span>
+                    <span className="flex items-center gap-3">
+                      <HabitIcon name={h.name} className={`w-6 h-6 ${count > 0 ? 'text-red-400' : 'text-gray-500'}`} />
+                      <span className="text-white font-medium text-lg">{h.name}</span>
+                    </span>
                     <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
                       {count}
                     </span>
@@ -104,7 +132,10 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                       onClick={openSlouchSheet}
                       className="w-full mt-3 flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                     >
-                      <span className="text-white font-medium text-lg">Slouching</span>
+                      <span className="flex items-center gap-3">
+                        <HabitIcon name="Slouching" className={`w-6 h-6 ${slouchCount > 0 ? 'text-amber-400' : 'text-gray-500'}`} />
+                        <span className="text-white font-medium text-lg">Slouching</span>
+                      </span>
                       <span className={`text-3xl font-bold tabular-nums ${slouchCount > 0 ? 'text-amber-400' : 'text-gray-600'}`}>
                         {slouchCount}
                       </span>
