@@ -435,11 +435,9 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                 {phase === 'work' ? 'Focus' : ''}
               </p>
             )}
-          </div>
 
-          <div className="px-6 pb-16 space-y-3">
             {phase !== 'break' && (todos.length > 0 || showTodoInput) && (
-              <div className="space-y-3 pb-3">
+              <div className="w-full max-w-md space-y-3 mt-6">
                 {todos.map(t => (
                   <div key={t.id} className="flex items-center gap-3">
                     <button
@@ -473,19 +471,21 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                   onChange={e => setTodoInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') addTodo() }}
                   placeholder="Add a task…"
-                  className="w-full bg-gray-800/60 text-white rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500"
+                  className="w-full bg-gray-800/60 text-white rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 text-center"
                 />
               </div>
             )}
             {phase !== 'break' && todos.length === 0 && !showTodoInput && (
               <button
                 onClick={() => setShowTodoInput(true)}
-                className="w-full border-2 border-dashed border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-300 rounded-2xl py-3 text-base font-medium transition-colors"
+                className="w-full max-w-md mt-6 border-2 border-dashed border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-300 rounded-2xl py-3 text-base font-medium transition-colors"
               >
                 + Add session tasks
               </button>
             )}
+          </div>
 
+          <div className="px-6 pb-16 space-y-3">
             {phase === 'break' ? (
               <button
                 onClick={() => {
