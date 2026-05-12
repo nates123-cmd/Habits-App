@@ -219,36 +219,38 @@ export default function FocusTimer({ userId, focusHabitId, onSessionComplete }) 
         </div>
 
         {!active && pomodoro && (
-          <div>
-            <div className="flex gap-2 flex-wrap">
-              {DURATION_OPTIONS.map(m => (
-                <button
-                  key={m}
-                  onClick={() => { setWorkMins(m); setCustomMins('') }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    workMins === m && customMins === ''
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  {m}m
-                </button>
-              ))}
-              <input
-                type="number"
-                min={1}
-                max={180}
-                placeholder="Custom"
-                value={customMins}
-                onChange={e => {
-                  setCustomMins(e.target.value)
-                  const v = parseInt(e.target.value)
-                  if (v > 0) setWorkMins(v)
-                }}
-                className="w-20 bg-gray-700 text-white rounded-full px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 text-center"
-              />
-            </div>
-          </div>
+          <select
+            value={customMins !== '' ? 'custom' : workMins}
+            onChange={e => {
+              if (e.target.value === 'custom') {
+                setCustomMins(String(workMins))
+              } else {
+                setCustomMins('')
+                setWorkMins(Number(e.target.value))
+              }
+            }}
+            className="w-full bg-gray-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            {DURATION_OPTIONS.map(m => (
+              <option key={m} value={m}>{m} minutes</option>
+            ))}
+            <option value="custom">Custom…</option>
+          </select>
+        )}
+        {!active && pomodoro && customMins !== '' && (
+          <input
+            type="number"
+            min={1}
+            max={180}
+            placeholder="Minutes"
+            value={customMins}
+            onChange={e => {
+              setCustomMins(e.target.value)
+              const v = parseInt(e.target.value)
+              if (v > 0) setWorkMins(v)
+            }}
+            className="w-full bg-gray-700 text-white rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500"
+          />
         )}
 
         {!active && (
