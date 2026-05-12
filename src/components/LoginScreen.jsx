@@ -54,15 +54,15 @@ export default function LoginScreen() {
         ) : (
           <form onSubmit={handleVerify} className="space-y-4">
             <p className="text-gray-400 text-sm text-center">
-              Enter the 6-digit code sent to <span className="text-white">{email}</span>
+              Enter the code sent to <span className="text-white">{email}</span>
             </p>
             <input
               type="text"
               inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
+              pattern="\d{6,8}"
+              maxLength={8}
               required
-              placeholder="000000"
+              placeholder="00000000"
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
               className="w-full bg-gray-800 text-white rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-500 text-center text-2xl tracking-widest"
@@ -70,7 +70,7 @@ export default function LoginScreen() {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
-              disabled={loading || code.length !== 6}
+              disabled={loading || (code.length !== 6 && code.length !== 8)}
               className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
             >
               {loading ? 'Verifying…' : 'Verify'}
