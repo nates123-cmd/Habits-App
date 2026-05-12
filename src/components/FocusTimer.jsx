@@ -61,6 +61,12 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
   const [worked,          setWorked]          = useState('')
   const [finalNote,       setFinalNote]       = useState('')
   const [saving,          setSaving]          = useState(false)
+  const [todos,           setTodos]           = useState([])
+  const [todoInput,       setTodoInput]       = useState('')
+  const [showTodoInput,   setShowTodoInput]   = useState(false)
+  const [showBackburner,  setShowBackburner]  = useState(false)
+  const [backburnerLog,   setBackburnerLog]   = useState([])
+  const [backburnerInput, setBackburnerInput] = useState('')
 
   const intervalRef  = useRef(null)
   const startTimeRef = useRef(null)
@@ -130,11 +136,44 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setElapsed(0)
     setPhase('work')
     setDistractionsLog([])
+    setBackburnerLog([])
+    setTodos([])
+    setShowTodoInput(false)
+    setTodoInput('')
+    setBackburnerInput('')
     setSessionRowIds([])
     setCyclesDone(0)
     setWorked(topic)
     setActive(true)
     setShowFullscreen(true)
+  }
+
+  function addTodo() {
+    const text = todoInput.trim()
+    if (!text) return
+    setTodos(prev => [...prev, { id: Date.now() + Math.random(), text, done: false }])
+    setTodoInput('')
+  }
+  function toggleTodo(id) {
+    setTodos(prev => prev.map(t => t.id === id ? { ...t, done: !t.done } : t))
+  }
+  function removeTodo(id) {
+    setTodos(prev => prev.filter(t => t.id !== id))
+  }
+
+  function logBackburner() {
+    const text = backburnerInput.trim()
+    if (!text) return
+    setBackburnerLog(prev => [...prev, { text, at: fmtTime(new Date()) }])
+    setBackburnerInput('')
+  }
+  function sendToReminders(text) {
+    // Opens an iOS Shortcut named "Add Reminder" that takes the text as input.
+    // Set up once on iPhone: Shortcuts app → new shortcut named exactly "Add Reminder"
+    // → "Add new reminder" action using Shortcut Input as the title.
+    if (!text) return
+    const url = 'shortcuts://run-shortcut?name=' + encodeURIComponent('Add Reminder') + '&input=text&text=' + encodeURIComponent(text)
+    window.location.href = url
   }
 
   async function logDistraction() {
@@ -182,8 +221,14 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
       (!pomodoro && minutes > 0) ||
       (pomodoro && phase === 'work' && elapsed > 0 && elapsed < workMins * 60)
 
-    const distractionsPayload = distractionsLog.length > 0 || finalNote.trim()
-      ? JSON.stringify({ logs: distractionsLog, note: finalNote.trim() || null })
+    const hasExtras = distractionsLog.length > 0 || finalNote.trim() || backburnerLog.length > 0 || todos.length > 0
+    const distractionsPayload = hasExtras
+      ? JSON.stringify({
+          logs: distractionsLog,
+          note: finalNote.trim() || null,
+          backburner: backburnerLog,
+          todos,
+        })
       : null
 
     let partialId = null
@@ -233,6 +278,11 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setWorked('')
     setFinalNote('')
     setDistractionsLog([])
+    setBackburnerLog([])
+    setTodos([])
+    setShowTodoInput(false)
+    setTodoInput('')
+    setBackburnerInput('')
     onSessionComplete?.()
   }
 
@@ -367,6 +417,11 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                   {distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}
                 </span>
               )}
+              {backburnerLog.length > 0 && (
+                <span className="text-sky-400">
+                  {backburnerLog.length} backburner
+                </span>
+              )}
             </div>
           </div>
 
@@ -383,6 +438,54 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
           </div>
 
           <div className="px-6 pb-16 space-y-3">
+            {phase !== 'break' && (todos.length > 0 || showTodoInput) && (
+              <div className="space-y-1.5 pb-2">
+                {todos.map(t => (
+                  <div key={t.id} className="flex items-center gap-2.5">
+                    <button
+                      onClick={() => toggleTodo(t.id)}
+                      className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
+                        t.done ? 'bg-indigo-600 border-indigo-600' : 'border-gray-600'
+                      }`}
+                      aria-label={t.done ? 'Mark as not done' : 'Mark as done'}
+                    >
+                      {t.done && (
+                        <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={`flex-1 text-sm ${t.done ? 'line-through text-gray-500' : 'text-gray-200'}`}>
+                      {t.text}
+                    </span>
+                    <button
+                      onClick={() => removeTodo(t.id)}
+                      className="text-gray-700 hover:text-gray-500 text-base px-1"
+                      aria-label="Remove task"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                <input
+                  type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+                  value={todoInput}
+                  onChange={e => setTodoInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addTodo() }}
+                  placeholder="Add a task…"
+                  className="w-full bg-gray-800/60 text-white rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-indigo-500 placeholder-gray-500"
+                />
+              </div>
+            )}
+            {phase !== 'break' && todos.length === 0 && !showTodoInput && (
+              <button
+                onClick={() => setShowTodoInput(true)}
+                className="text-xs text-gray-500 hover:text-gray-400 transition-colors"
+              >
+                + Add session tasks
+              </button>
+            )}
+
             {phase === 'break' ? (
               <button
                 onClick={() => {
@@ -396,12 +499,20 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                 Hop back in
               </button>
             ) : (
-              <button
-                onClick={() => setShowDistraction(true)}
-                className="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-2xl py-4 text-lg transition-colors"
-              >
-                Distraction
-              </button>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setShowDistraction(true)}
+                  className="bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-2xl py-4 text-base transition-colors"
+                >
+                  Distraction
+                </button>
+                <button
+                  onClick={() => setShowBackburner(true)}
+                  className="bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-2xl py-4 text-base transition-colors"
+                >
+                  Backburner
+                </button>
+              </div>
             )}
             <button
               onClick={endSession}
@@ -485,13 +596,82 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
         </BottomSheet>
       )}
 
+      {/* Backburner sheet */}
+      {showBackburner && (
+        <BottomSheet title="Backburner" onClose={() => setShowBackburner(false)}>
+          <div className="space-y-4">
+            <p className="text-gray-400 text-sm">
+              Capture something to come back to later — without pulling yourself off task right now.
+            </p>
+            <textarea
+              autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
+              value={backburnerInput}
+              onChange={e => setBackburnerInput(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="What's on your mind?"
+              className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-sky-500 resize-none text-sm placeholder-gray-500"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={logBackburner}
+                disabled={!backburnerInput.trim()}
+                className="bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition-colors"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  const text = backburnerInput.trim()
+                  if (!text) return
+                  sendToReminders(text)
+                  logBackburner()
+                }}
+                disabled={!backburnerInput.trim()}
+                className="bg-gray-800 hover:bg-gray-700 disabled:opacity-40 text-white font-semibold rounded-xl py-3 transition-colors text-sm"
+              >
+                Save + → Reminders
+              </button>
+            </div>
+            {backburnerLog.length > 0 && (
+              <div className="space-y-2 pt-3 border-t border-gray-800">
+                <p className="text-xs text-gray-500">
+                  {backburnerLog.length} item{backburnerLog.length !== 1 ? 's' : ''} this session
+                </p>
+                {backburnerLog.map((b, i) => (
+                  <div key={i} className="flex items-start gap-2 text-sm">
+                    <span className="text-gray-500 text-xs flex-shrink-0 pt-0.5">{b.at}</span>
+                    <span className="text-gray-300 flex-1">{b.text}</span>
+                    <button
+                      onClick={() => sendToReminders(b.text)}
+                      className="text-sky-400 hover:text-sky-300 text-xs flex-shrink-0"
+                      aria-label="Send to Apple Reminders"
+                    >
+                      → Reminders
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </BottomSheet>
+      )}
+
       {/* Wrap-up sheet */}
       {showWrap && (
         <BottomSheet title="Session complete" onClose={() => setShowWrap(false)}>
           <div className="space-y-4">
-            {distractionsLog.length > 0 && (
-              <p className="text-xs text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''} logged</p>
-            )}
+            <div className="flex flex-wrap gap-3 text-xs">
+              {distractionsLog.length > 0 && (
+                <span className="text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}</span>
+              )}
+              {backburnerLog.length > 0 && (
+                <span className="text-sky-400">{backburnerLog.length} backburner</span>
+              )}
+              {todos.length > 0 && (
+                <span className="text-indigo-400">{todos.filter(t => t.done).length}/{todos.length} tasks done</span>
+              )}
+            </div>
             <div>
               <label className="text-gray-400 text-sm block mb-1">What did you work on? (optional)</label>
               <input
