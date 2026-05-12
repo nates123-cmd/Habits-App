@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useHabits } from './hooks/useHabits'
 import { useTodayLogs } from './hooks/useTodayLogs'
-import { seedDefaultHabits } from './lib/seed'
+import { seedDefaultHabits, mergeDuplicateHabits } from './lib/seed'
 import LoginScreen from './components/LoginScreen'
 import NavBar from './components/NavBar'
 import TodayView from './views/TodayView'
@@ -16,6 +16,7 @@ export default function App() {
   const { logs, refetch: refetchLogs } = useTodayLogs(userId)
   const [view, setView] = useState('today')
   const [seeded, setSeeded] = useState(false)
+  const [merged, setMerged] = useState(false)
 
   // Seed default habits on first login
   useEffect(() => {
@@ -29,6 +30,13 @@ export default function App() {
       setSeeded(true)
     }
   }, [userId, habits, habitsLoading, seeded, refetchHabits])
+
+  // One-time merge of any duplicate habits (e.g. auto-created Distractions)
+  useEffect(() => {
+    if (!userId || merged || habitsLoading) return
+    setMerged(true)
+    mergeDuplicateHabits(userId).then(refetchHabits)
+  }, [userId, merged, habitsLoading, refetchHabits])
 
   function handleRefresh() {
     refetchLogs()

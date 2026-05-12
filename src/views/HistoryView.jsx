@@ -4,7 +4,9 @@ import { supabase } from '../lib/supabase'
 const PAGE_SIZE = 20
 
 export default function HistoryView({ habits, userId }) {
-  const visibleHabits = habits.filter(h => h.type !== 'build' || h.name === 'Focus')
+  const visibleHabits = habits
+    .filter(h => h.type !== 'build' || h.name === 'Focus')
+    .filter((h, i, arr) => arr.findIndex(x => x.name === h.name) === i)
   const [selectedId,  setSelectedId]  = useState(visibleHabits[0]?.id || null)
   const [logs,        setLogs]        = useState([])
   const [focusSessions, setFocusSessions] = useState([])
@@ -61,6 +63,24 @@ export default function HistoryView({ habits, userId }) {
       setFocusSessions(data)
       setTotalFocusMinutes(data.reduce((sum, s) => sum + (s.duration_minutes || 0), 0))
     }
+  }
+
+  async function deleteLog(id) {
+    if (!window.confirm('Delete this log?')) return
+    const { error } = await supabase.from('habit_logs').delete().eq('id', id)
+    if (error) { alert(`Could not delete log: ${error.message}`); return }
+    setLogs(prev => prev.filter(l => l.id !== id))
+  }
+
+  async function deleteFocusSession(id) {
+    if (!window.confirm('Delete this focus session?')) return
+    const { error } = await supabase.from('focus_sessions').delete().eq('id', id)
+    if (error) { alert(`Could not delete session: ${error.message}`); return }
+    setFocusSessions(prev => {
+      const next = prev.filter(s => s.id !== id)
+      setTotalFocusMinutes(next.reduce((sum, s) => sum + (s.duration_minutes || 0), 0))
+      return next
+    })
   }
 
   function moodDist() {
@@ -131,9 +151,14 @@ export default function HistoryView({ habits, userId }) {
           <div className="space-y-3">
             {focusSessions.map(s => (
               <div key={s.id} className="border-b border-gray-700 pb-3 last:border-0">
-                <div className="flex justify-between items-start">
-                  <p className="text-white text-sm font-medium">{s.what_worked_on}</p>
-                  <p className="text-indigo-400 text-sm font-semibold ml-3">{s.duration_minutes}m</p>
+                <div className="flex justify-between items-start gap-3">
+                  <p className="text-white text-sm font-medium flex-1">{s.what_worked_on}</p>
+                  <p className="text-indigo-400 text-sm font-semibold">{s.duration_minutes}m</p>
+                  <button
+                    onClick={() => deleteFocusSession(s.id)}
+                    className="text-gray-500 hover:text-red-400 text-lg leading-none px-1"
+                    aria-label="Delete session"
+                  >×</button>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {new Date(s.started_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -203,16 +228,21 @@ export default function HistoryView({ habits, userId }) {
             )}
             {logs.map(l => (
               <div key={l.id} className="bg-gray-800 rounded-xl px-4 py-3 text-sm">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start gap-3">
                   <p className="text-gray-300">
                     {new Date(l.logged_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}{' '}
                     <span className="text-gray-500 text-xs">
                       {new Date(l.logged_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </span>
                   </p>
-                  <div className="flex gap-2 text-xs text-right">
+                  <div className="flex items-center gap-2 text-xs text-right">
                     {l.mood     && <span className="text-yellow-400 capitalize">{l.mood}</span>}
                     {l.activity && <span className="text-blue-400 capitalize">{l.activity}</span>}
+                    <button
+                      onClick={() => deleteLog(l.id)}
+                      className="text-gray-500 hover:text-red-400 text-lg leading-none px-1"
+                      aria-label="Delete log"
+                    >×</button>
                   </div>
                 </div>
                 {l.notes && <p className="text-gray-500 text-xs mt-1">{l.notes}</p>}

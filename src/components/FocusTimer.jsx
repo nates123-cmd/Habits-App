@@ -45,7 +45,8 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
   const [customMins,      setCustomMins]      = useState('')
   const [elapsed,         setElapsed]         = useState(0)
   const [phase,           setPhase]           = useState('work')
-  const [sessionId,       setSessionId]       = useState(null)
+  const [sessionRowIds,   setSessionRowIds]   = useState([])
+  const [cyclesDone,      setCyclesDone]      = useState(0)
   const [showFullscreen,  setShowFullscreen]  = useState(false)
   const [showDistraction, setShowDistraction] = useState(false)
   const [showPhaseEnd,    setShowPhaseEnd]    = useState(false)
@@ -74,6 +75,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
           chime()
           navigator.vibrate?.([200, 100, 200])
           setPhaseEndPosture(null)
+          recordCompletedCycle(workMins)
           setShowPhaseEnd(true)
         } else if (pomodoro && phase === 'break' && secs >= POMODORO_BREAK) {
           startTimeRef.current = Date.now()
@@ -102,17 +104,34 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     return () => document.removeEventListener('visibilitychange', sync)
   }, [active])
 
-  async function startSession() {
+  async function recordCompletedCycle(minutes) {
+    if (!userId || minutes <= 0) return
     const { data, error } = await supabase
       .from('focus_sessions')
-      .insert({ user_id: userId, what_worked_on: '', completed: false })
+      .insert({
+        user_id:          userId,
+        completed:        true,
+        duration_minutes: minutes,
+        what_worked_on:   topic.trim() || '',
+      })
       .select()
       .single()
-    if (!error) setSessionId(data.id)
+    if (error) { console.error('Focus session insert failed:', error); return }
+    setSessionRowIds(prev => [...prev, data.id])
+    setCyclesDone(c => c + 1)
+    if (focusHabitId) {
+      const { error: logErr } = await supabase.from('habit_logs').insert({ user_id: userId, habit_id: focusHabitId })
+      if (logErr) console.error('Focus habit_log insert failed:', logErr)
+    }
+  }
+
+  function startSession() {
     startTimeRef.current = Date.now()
     setElapsed(0)
     setPhase('work')
     setDistractionsLog([])
+    setSessionRowIds([])
+    setCyclesDone(0)
     setWorked(topic)
     setActive(true)
     setShowFullscreen(true)
@@ -157,32 +176,58 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
 
   async function completeSession() {
     setSaving(true)
+
     const minutes = Math.ceil(elapsed / 60)
+    const shouldSavePartial =
+      (!pomodoro && minutes > 0) ||
+      (pomodoro && phase === 'work' && elapsed > 0 && elapsed < workMins * 60)
 
-    const distractionsPayload = JSON.stringify({
-      logs: distractionsLog,
-      note: finalNote.trim() || null,
-    })
+    const distractionsPayload = distractionsLog.length > 0 || finalNote.trim()
+      ? JSON.stringify({ logs: distractionsLog, note: finalNote.trim() || null })
+      : null
 
-    await supabase
-      .from('focus_sessions')
-      .update({
-        completed:        true,
-        duration_minutes: minutes,
-        what_worked_on:   worked.trim() || '',
-        distractions:     distractionsLog.length > 0 || finalNote.trim()
-          ? distractionsPayload
-          : null,
-      })
-      .eq('id', sessionId)
+    let partialId = null
+    if (shouldSavePartial) {
+      const { data, error } = await supabase
+        .from('focus_sessions')
+        .insert({
+          user_id:          userId,
+          completed:        true,
+          duration_minutes: minutes,
+          what_worked_on:   worked.trim() || '',
+        })
+        .select()
+        .single()
+      if (error) {
+        console.error('Focus session partial insert failed:', error)
+      } else {
+        partialId = data.id
+        if (focusHabitId) {
+          const { error: logErr } = await supabase.from('habit_logs').insert({ user_id: userId, habit_id: focusHabitId })
+          if (logErr) console.error('Focus habit_log insert failed:', logErr)
+        }
+      }
+    }
 
-    if (focusHabitId) {
-      await supabase.from('habit_logs').insert({ user_id: userId, habit_id: focusHabitId })
+    const allRowIds = [...sessionRowIds, partialId].filter(Boolean)
+    if (allRowIds.length > 0) {
+      await supabase
+        .from('focus_sessions')
+        .update({ what_worked_on: worked.trim() || '' })
+        .in('id', allRowIds)
+      const finalRowId = partialId || sessionRowIds[sessionRowIds.length - 1]
+      if (finalRowId && distractionsPayload) {
+        await supabase
+          .from('focus_sessions')
+          .update({ distractions: distractionsPayload })
+          .eq('id', finalRowId)
+      }
     }
 
     setSaving(false)
     setShowWrap(false)
-    setSessionId(null)
+    setSessionRowIds([])
+    setCyclesDone(0)
     setElapsed(0)
     setTopic('')
     setWorked('')
@@ -216,8 +261,15 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
               </div>
             </label>
           )}
-          {active && distractionsLog.length > 0 && (
-            <span className="text-xs text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}</span>
+          {active && (
+            <div className="flex items-center gap-2 text-xs">
+              {cyclesDone > 0 && (
+                <span className="text-indigo-400">{cyclesDone} done</span>
+              )}
+              {distractionsLog.length > 0 && (
+                <span className="text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}</span>
+              )}
+            </div>
           )}
         </div>
 
@@ -306,11 +358,16 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
               </svg>
               Back
             </button>
-            {distractionsLog.length > 0 && (
-              <span className="ml-auto text-xs text-amber-400">
-                {distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}
-              </span>
-            )}
+            <div className="ml-auto flex items-center gap-3 text-xs">
+              {cyclesDone > 0 && (
+                <span className="text-indigo-400">{cyclesDone} done</span>
+              )}
+              {distractionsLog.length > 0 && (
+                <span className="text-amber-400">
+                  {distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8">
