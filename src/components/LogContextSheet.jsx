@@ -30,7 +30,7 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
 
   async function handleLog() {
     setSaving(true)
-    await supabase.from('habit_logs').insert({
+    const { error } = await supabase.from('habit_logs').insert({
       user_id:  userId,
       habit_id: habit.id,
       mood:     isPosture ? null : (mood || null),
@@ -41,6 +41,7 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
       log_date: new Date().toISOString().slice(0, 10),
     })
     setSaving(false)
+    if (error) { console.error('Log insert failed:', error); alert(`Could not log: ${error.message}`); return }
     onDone()
   }
 
