@@ -1,8 +1,9 @@
-const CACHE_NAME = 'tick-v1';
+const CACHE_NAME = 'tick-v2';
 const SHELL = [
   '/Habits-App/',
   '/Habits-App/index.html',
   '/Habits-App/manifest.json',
+  '/Habits-App/icon.svg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,7 +32,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first for everything else (JS/CSS assets, HTML shell)
+  // Network-first for the HTML shell so users get the latest <head>/icons
+  const isHtml = event.request.mode === 'navigate' ||
+                 event.request.destination === 'document' ||
+                 event.request.url.endsWith('/Habits-App/') ||
+                 event.request.url.endsWith('/Habits-App/index.html');
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        return response;
+      }).catch(() => caches.match(event.request).then((c) => c || caches.match('/Habits-App/index.html')))
+    );
+    return;
+  }
+
+  // Cache-first for hashed JS/CSS assets and icons
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
