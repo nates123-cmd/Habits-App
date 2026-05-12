@@ -9,14 +9,14 @@ const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell',
 
 function chime() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  // IV → I resolution: FMaj → CMaj, each chord hit simultaneously
+  // C dominant 7 (high) → FMaj7 (low) — descending resolution
   const chords = [
-    [349.23, 440.00, 523.25],  // FMaj: F4-A4-C5
-    [523.25, 659.25, 783.99],  // CMaj: C5-E5-G5
+    [523.25, 659.25, 783.99, 932.33],  // C7:   C5-E5-G5-Bb5
+    [349.23, 440.00, 523.25, 659.25],  // FMaj7: F4-A4-C5-E5
   ]
 
   chords.forEach((chord, ci) => {
-    const t = ctx.currentTime + ci * 0.45
+    const t = ctx.currentTime + ci * 0.5
     chord.forEach(freq => {
       const osc  = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -25,10 +25,10 @@ function chime() {
       osc.type = 'sine'
       osc.frequency.value = freq
       gain.gain.setValueAtTime(0, t)
-      gain.gain.linearRampToValueAtTime(0.12, t + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.9)
+      gain.gain.linearRampToValueAtTime(0.11, t + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.0)
       osc.start(t)
-      osc.stop(t + 0.9)
+      osc.stop(t + 1.0)
     })
   })
 }
