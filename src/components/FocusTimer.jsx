@@ -8,22 +8,8 @@ const MOODS          = ['bored', 'anxious', 'tired', 'fine', 'unsure']
 const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
 
 function chime() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)()
-  // FMaj7 single chord hit: F4-A4-C5-E5
-  const t = ctx.currentTime
-  ;[349.23, 440.00, 523.25, 659.25].forEach(freq => {
-    const osc  = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    gain.gain.setValueAtTime(0, t)
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.02)
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.5)
-    osc.start(t)
-    osc.stop(t + 1.5)
-  })
+  const audio = new Audio('/tick-jingle.wav')
+  audio.play().catch(err => console.warn('Chime playback failed:', err))
 }
 
 function fmt(seconds) {
@@ -706,7 +692,19 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
 
       {/* Work phase end prompt */}
       {showPhaseEnd && (
-        <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col items-center justify-center px-8 gap-6">
+        <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col px-8">
+          <div className="pt-12 pb-4 -mx-8 px-5">
+            <button
+              onClick={() => setShowPhaseEnd(false)}
+              className="text-gray-400 hover:text-white text-sm flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-6">
           <p className="text-white text-3xl font-bold text-center">{workMins} minutes done</p>
 
           {/* Posture check */}
@@ -761,6 +759,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
           >
             Take a break
           </button>
+          </div>
         </div>
       )}
     </>
