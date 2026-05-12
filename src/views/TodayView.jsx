@@ -37,12 +37,24 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
     setSlouchOpen(true)
   }
 
+  async function ensurePostureHabit() {
+    if (postureHabit) return postureHabit.id
+    const { data, error } = await supabase
+      .from('habits')
+      .insert({ user_id: userId, name: 'Posture', type: 'reduce', tracking: 'instance', has_context: true })
+      .select()
+      .single()
+    if (error) { console.error('Posture habit create failed:', error); alert(`Could not create Posture habit: ${error.message}`); return null }
+    return data.id
+  }
+
   async function saveSlouching() {
-    if (!postureHabit) return
     setSlouchSaving(true)
+    const habitId = await ensurePostureHabit()
+    if (!habitId) { setSlouchSaving(false); return }
     const { error } = await supabase.from('habit_logs').insert({
       user_id:  userId,
-      habit_id: postureHabit.id,
+      habit_id: habitId,
       outcome:  'slouching',
       activity: slouchActivity || null,
       notes:    slouchNotes.trim() || null,
@@ -87,7 +99,7 @@ export default function TodayView({ habits, logs, userId, onRefresh }) {
                       {count}
                     </span>
                   </button>
-                  {h.name === 'BFRB' && postureHabit && (
+                  {h.name === 'BFRB' && (
                     <button
                       onClick={openSlouchSheet}
                       className="w-full mt-2 bg-gray-800 active:bg-amber-900 rounded-xl py-2.5 px-4 flex items-center justify-between text-sm font-medium text-amber-400 transition-colors"
