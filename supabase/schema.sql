@@ -32,7 +32,7 @@ create table if not exists habit_logs (
   user_id    uuid not null references auth.users(id) on delete cascade,
   habit_id   uuid not null references habits(id) on delete cascade,
   logged_at  timestamptz not null default now(),
-  mood       text check (mood in ('bored', 'anxious', 'tired', 'fine', 'focused')),
+  mood       text check (mood in ('bored', 'anxious', 'tired', 'fine', 'focused', 'distracted')),
   activity   text check (activity in ('driving', 'phone', 'working', 'working out', 'TV', 'other')),
   notes      text,
   outcome    text check (outcome in ('acted', 'caught_mid', 'urge_only', 'good', 'slouching')),

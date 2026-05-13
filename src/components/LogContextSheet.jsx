@@ -2,7 +2,8 @@ import { useState } from 'react'
 import BottomSheet from './BottomSheet'
 import { supabase } from '../lib/supabase'
 
-const MOODS      = ['bored', 'anxious', 'tired', 'fine', 'focused']
+const MOODS         = ['bored', 'anxious', 'tired', 'fine', 'focused']
+const BFRB_MOODS    = ['bored', 'anxious', 'tired', 'fine', 'focused', 'distracted']
 const ACTIVITIES = ['phone', 'working', 'working out', 'TV', 'other']
 const LOCATIONS  = ['nose', 'finger', 'face', 'nails']
 
@@ -98,7 +99,7 @@ export default function LogContextSheet({ habit, userId, onDone, onClose }) {
             <div>
               <p className="text-gray-400 text-sm mb-2">Mood</p>
               <div className="flex gap-2 flex-wrap">
-                {MOODS.map(m => (
+                {(isBFRB ? BFRB_MOODS : MOODS).map(m => (
                   <button
                     key={m}
                     onClick={() => setMood(mood === m ? '' : m)}
