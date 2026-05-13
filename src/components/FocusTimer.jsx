@@ -7,9 +7,44 @@ const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60]
 const MOODS          = ['bored', 'anxious', 'tired', 'fine', 'unsure']
 const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
 
+let audioCtx = null
+let chimeBuffer = null
+let bufferPromise = null
+
+// Must be called from a user gesture (e.g. tapping Start) so iOS unlocks audio
+async function primeChime() {
+  try {
+    if (!audioCtx) {
+      const Ctor = window.AudioContext || window.webkitAudioContext
+      if (!Ctor) return
+      audioCtx = new Ctor()
+    }
+    if (audioCtx.state === 'suspended') await audioCtx.resume()
+    if (!chimeBuffer && !bufferPromise) {
+      bufferPromise = fetch('/tick-jingle.wav')
+        .then(r => r.arrayBuffer())
+        .then(a => audioCtx.decodeAudioData(a))
+        .then(b => { chimeBuffer = b })
+        .catch(err => { console.warn('Chime preload failed:', err); bufferPromise = null })
+    }
+  } catch (err) {
+    console.warn('Chime prime failed:', err)
+  }
+}
+
 function chime() {
-  const audio = new Audio('/tick-jingle.wav')
-  audio.play().catch(err => console.warn('Chime playback failed:', err))
+  try {
+    if (!audioCtx || !chimeBuffer) {
+      console.warn('Chime not ready', { hasCtx: !!audioCtx, hasBuffer: !!chimeBuffer })
+      return
+    }
+    const src = audioCtx.createBufferSource()
+    src.buffer = chimeBuffer
+    src.connect(audioCtx.destination)
+    src.start(0)
+  } catch (err) {
+    console.warn('Chime playback failed:', err)
+  }
 }
 
 function fmt(seconds) {
@@ -114,6 +149,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
   }
 
   function startSession() {
+    primeChime()
     startTimeRef.current = Date.now()
     setElapsed(0)
     setPhase('work')
