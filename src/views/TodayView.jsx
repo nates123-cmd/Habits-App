@@ -119,31 +119,19 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
                 </div>
               )
             })}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => logPosture('good')}
-                disabled={posturePending}
-                className="flex items-center justify-between bg-gray-800 active:bg-gray-700 disabled:opacity-60 rounded-2xl px-5 py-4 transition-colors"
-              >
-                <span className="text-white font-medium text-lg">Posture</span>
-                <span className={`text-3xl font-bold tabular-nums ${postureCounts.good > 0 ? 'text-emerald-400' : 'text-gray-600'}`}>
-                  {postureCounts.good}
-                </span>
-              </button>
-              <button
-                onClick={() => logPosture('slouching')}
-                disabled={posturePending}
-                className="flex items-center justify-between bg-gray-800 active:bg-gray-700 disabled:opacity-60 rounded-2xl px-5 py-4 transition-colors"
-              >
-                <span className="flex items-center gap-2">
-                  <HabitIcon name="Slouching" className={`w-5 h-5 ${postureCounts.slouching > 0 ? 'text-amber-400' : 'text-gray-500'}`} />
-                  <span className="text-white font-medium text-lg">Slouching</span>
-                </span>
-                <span className={`text-3xl font-bold tabular-nums ${postureCounts.slouching > 0 ? 'text-amber-400' : 'text-gray-600'}`}>
-                  {postureCounts.slouching}
-                </span>
-              </button>
-            </div>
+            <button
+              onClick={() => logPosture('slouching')}
+              disabled={posturePending}
+              className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 disabled:opacity-60 rounded-2xl px-5 py-4 transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <HabitIcon name="Slouching" className={`w-6 h-6 ${postureCounts.slouching > 0 ? 'text-red-400' : 'text-gray-500'}`} />
+                <span className="text-white font-medium text-lg">Slouching</span>
+              </span>
+              <span className={`text-3xl font-bold tabular-nums ${postureCounts.slouching > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                {postureCounts.slouching}
+              </span>
+            </button>
           </div>
         </section>
       )}
