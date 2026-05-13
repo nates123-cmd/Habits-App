@@ -43,10 +43,6 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
   const [distOther,       setDistOther]       = useState('')
   const [distNotes,       setDistNotes]       = useState('')
   const [topic,           setTopic]           = useState('')
-  const [showWrap,        setShowWrap]        = useState(false)
-  const [worked,          setWorked]          = useState('')
-  const [finalNote,       setFinalNote]       = useState('')
-  const [saving,          setSaving]          = useState(false)
   const [todos,           setTodos]           = useState([])
   const [todoInput,       setTodoInput]       = useState('')
   const [showTodoInput,   setShowTodoInput]   = useState(false)
@@ -129,7 +125,6 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setBackburnerInput('')
     setSessionRowIds([])
     setCyclesDone(0)
-    setWorked(topic)
     setActive(true)
     setShowFullscreen(true)
   }
@@ -193,25 +188,19 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setShowDistraction(false)
   }
 
-  function endSession() {
+  async function endSession() {
     setActive(false)
     setShowFullscreen(false)
-    setShowWrap(true)
-  }
-
-  async function completeSession() {
-    setSaving(true)
 
     const minutes = Math.ceil(elapsed / 60)
     const shouldSavePartial =
       (!pomodoro && minutes > 0) ||
       (pomodoro && phase === 'work' && elapsed > 0 && elapsed < workMins * 60)
 
-    const hasExtras = distractionsLog.length > 0 || finalNote.trim() || backburnerLog.length > 0 || todos.length > 0
+    const hasExtras = distractionsLog.length > 0 || backburnerLog.length > 0 || todos.length > 0
     const distractionsPayload = hasExtras
       ? JSON.stringify({
           logs: distractionsLog,
-          note: finalNote.trim() || null,
           backburner: backburnerLog,
           todos,
         })
@@ -225,7 +214,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
           user_id:          userId,
           completed:        true,
           duration_minutes: minutes,
-          what_worked_on:   worked.trim() || '',
+          what_worked_on:   topic.trim() || '',
         })
         .select()
         .single()
@@ -240,29 +229,18 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
       }
     }
 
-    const allRowIds = [...sessionRowIds, partialId].filter(Boolean)
-    if (allRowIds.length > 0) {
+    const finalRowId = partialId || sessionRowIds[sessionRowIds.length - 1]
+    if (finalRowId && distractionsPayload) {
       await supabase
         .from('focus_sessions')
-        .update({ what_worked_on: worked.trim() || '' })
-        .in('id', allRowIds)
-      const finalRowId = partialId || sessionRowIds[sessionRowIds.length - 1]
-      if (finalRowId && distractionsPayload) {
-        await supabase
-          .from('focus_sessions')
-          .update({ distractions: distractionsPayload })
-          .eq('id', finalRowId)
-      }
+        .update({ distractions: distractionsPayload })
+        .eq('id', finalRowId)
     }
 
-    setSaving(false)
-    setShowWrap(false)
     setSessionRowIds([])
     setCyclesDone(0)
     setElapsed(0)
     setTopic('')
-    setWorked('')
-    setFinalNote('')
     setDistractionsLog([])
     setBackburnerLog([])
     setTodos([])
@@ -639,53 +617,6 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
                 ))}
               </div>
             )}
-          </div>
-        </BottomSheet>
-      )}
-
-      {/* Wrap-up sheet */}
-      {showWrap && (
-        <BottomSheet title="Session complete" onClose={() => setShowWrap(false)}>
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3 text-xs">
-              {distractionsLog.length > 0 && (
-                <span className="text-amber-400">{distractionsLog.length} distraction{distractionsLog.length !== 1 ? 's' : ''}</span>
-              )}
-              {backburnerLog.length > 0 && (
-                <span className="text-sky-400">{backburnerLog.length} backburner</span>
-              )}
-              {todos.length > 0 && (
-                <span className="text-indigo-400">{todos.filter(t => t.done).length}/{todos.length} tasks done</span>
-              )}
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">What did you work on? (optional)</label>
-              <input
-                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
-                value={worked}
-                onChange={e => setWorked(e.target.value)}
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder-gray-500"
-                placeholder="e.g. Deep work on project X"
-                autoFocus
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm block mb-1">Any distraction notes? (optional)</label>
-              <input
-                type="text" autoComplete="off" data-1p-ignore data-lpignore="true" data-bwignore="true"
-                value={finalNote}
-                onChange={e => setFinalNote(e.target.value)}
-                className="w-full bg-gray-800 text-white rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-sm placeholder-gray-500"
-                placeholder="Overall notes on distractions"
-              />
-            </div>
-            <button
-              onClick={completeSession}
-              disabled={saving}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold rounded-xl py-3 transition-colors"
-            >
-              {saving ? 'Saving…' : 'Save session'}
-            </button>
           </div>
         </BottomSheet>
       )}
