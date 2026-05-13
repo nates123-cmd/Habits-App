@@ -21,7 +21,7 @@ async function primeChime() {
     }
     if (audioCtx.state === 'suspended') await audioCtx.resume()
     if (!chimeBuffer && !bufferPromise) {
-      bufferPromise = fetch('/tick-jingle.wav')
+      bufferPromise = fetch(`${import.meta.env.BASE_URL}tick-jingle.wav`)
         .then(r => r.arrayBuffer())
         .then(a => audioCtx.decodeAudioData(a))
         .then(b => { chimeBuffer = b })
