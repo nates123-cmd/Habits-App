@@ -23,6 +23,15 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
       </svg>
     )
   }
+  if (name === 'LTMs') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="5" r="2.2" />
+        <path d="M12 7.5L7 19h10L12 7.5Z" />
+        <path d="M8.5 11h7" />
+      </svg>
+    )
+  }
   if (name === 'Distractions') {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
@@ -159,6 +168,7 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
                   className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                 >
                   <span className="flex items-center gap-3">
+                    <HabitIcon name="LTMs" className={`w-6 h-6 ${count > 0 ? 'text-red-400' : 'text-gray-500'}`} />
                     <span className="text-white font-medium text-lg">LTMs</span>
                   </span>
                   <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
