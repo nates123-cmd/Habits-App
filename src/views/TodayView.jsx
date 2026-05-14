@@ -26,9 +26,8 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
   if (name === 'LTMs') {
     return (
       <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="5" r="2.2" />
-        <path d="M12 7.5L7 19h10L12 7.5Z" />
-        <path d="M8.5 11h7" />
+        <rect x="5" y="5" width="14" height="10" rx="1" />
+        <path d="M5 15l-2 4h18l-2-4" />
       </svg>
     )
   }
@@ -49,6 +48,7 @@ function HabitIcon({ name, className = 'w-6 h-6' }) {
 export default function TodayView({ habits, logs, postureCounts = { good: 0, slouching: 0 }, userId, onRefresh }) {
   const [contextHabit, setContextHabit]   = useState(null)
   const [posturePending, setPosturePending] = useState(false)
+  const [ltmsStreak, setLtmsStreak]       = useState(null)
 
   const reduceHabits      = habits
     .filter(h => h.type === 'reduce' && h.name !== 'Posture')
@@ -74,6 +74,28 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
     }
     createIfMissing()
   }, [userId, habits, distractionsHabit, onRefresh])
+
+  useEffect(() => {
+    if (!userId || !ltmsHabit) { setLtmsStreak(null); return }
+    let cancelled = false
+    async function loadStreak() {
+      const { data } = await supabase
+        .from('habit_logs')
+        .select('logged_at')
+        .eq('user_id', userId)
+        .eq('habit_id', ltmsHabit.id)
+        .order('logged_at', { ascending: false })
+        .limit(1)
+      if (cancelled) return
+      const startIso = (data && data.length > 0) ? data[0].logged_at : ltmsHabit.created_at
+      const startDay = new Date(startIso); startDay.setHours(0, 0, 0, 0)
+      const today    = new Date();          today.setHours(0, 0, 0, 0)
+      const days     = Math.max(0, Math.floor((today - startDay) / 86400000))
+      setLtmsStreak(days)
+    }
+    loadStreak()
+    return () => { cancelled = true }
+  }, [userId, ltmsHabit?.id, ltmsHabit?.created_at, logs])
 
   const creatingLtmsRef = useRef(false)
   useEffect(() => {
@@ -161,18 +183,23 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
               </span>
             </button>
             {ltmsHabit && (() => {
-              const count = countForHabit(ltmsHabit.id)
+              const count       = countForHabit(ltmsHabit.id)
+              const loggedToday = count > 0
+              const display     = loggedToday ? count : (ltmsStreak ?? 0)
+              const numberColor = loggedToday
+                ? 'text-red-400'
+                : (ltmsStreak && ltmsStreak > 0 ? 'text-emerald-400' : 'text-gray-600')
               return (
                 <button
                   onClick={() => tapReduceHabit(ltmsHabit)}
                   className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                 >
                   <span className="flex items-center gap-3">
-                    <HabitIcon name="LTMs" className={`w-6 h-6 ${count > 0 ? 'text-red-400' : 'text-gray-500'}`} />
+                    <HabitIcon name="LTMs" className={`w-6 h-6 ${loggedToday ? 'text-red-400' : 'text-gray-500'}`} />
                     <span className="text-white font-medium text-lg">LTMs</span>
                   </span>
-                  <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
-                    {count}
+                  <span className={`text-3xl font-bold tabular-nums ${numberColor}`}>
+                    {display}
                   </span>
                 </button>
               )
