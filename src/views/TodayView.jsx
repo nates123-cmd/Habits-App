@@ -44,6 +44,8 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
   const reduceHabits      = habits
     .filter(h => h.type === 'reduce' && h.name !== 'Posture')
     .filter((h, i, arr) => arr.findIndex(x => x.name === h.name) === i)
+  const topReduceHabits   = reduceHabits.filter(h => h.name !== 'LTMs')
+  const ltmsHabit         = reduceHabits.find(h => h.name === 'LTMs')
   const focusHabit        = habits.find(h => h.name === 'Focus' && h.type === 'build')
   const distractionsHabit = habits.find(h => h.name === 'Distractions' && h.type === 'reduce')
 
@@ -63,6 +65,23 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
     }
     createIfMissing()
   }, [userId, habits, distractionsHabit, onRefresh])
+
+  const creatingLtmsRef = useRef(false)
+  useEffect(() => {
+    if (!userId || habits.length === 0 || ltmsHabit || creatingLtmsRef.current) return
+    creatingLtmsRef.current = true
+    async function createIfMissing() {
+      const { data: existing } = await supabase
+        .from('habits').select('id').eq('user_id', userId).eq('name', 'LTMs').limit(1)
+      if (existing && existing.length > 0) { onRefresh(); return }
+      const { error } = await supabase.from('habits').insert({
+        user_id: userId, name: 'LTMs', type: 'reduce', tracking: 'instance', has_context: true,
+      })
+      if (error) { console.error('LTMs habit create failed:', error); creatingLtmsRef.current = false; return }
+      onRefresh()
+    }
+    createIfMissing()
+  }, [userId, habits, ltmsHabit, onRefresh])
 
   const countForHabit = (habitId) => logs.filter(l => l.habit_id === habitId).length
 
@@ -100,7 +119,7 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
         <section>
           <p className="text-xs uppercase tracking-widest text-gray-500 mb-3">Reduce</p>
           <div className="space-y-3">
-            {reduceHabits.map(h => {
+            {topReduceHabits.map(h => {
               const count = countForHabit(h.id)
               return (
                 <div key={h.id}>
@@ -132,6 +151,22 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
                 {postureCounts.slouching}
               </span>
             </button>
+            {ltmsHabit && (() => {
+              const count = countForHabit(ltmsHabit.id)
+              return (
+                <button
+                  onClick={() => tapReduceHabit(ltmsHabit)}
+                  className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="text-white font-medium text-lg">LTMs</span>
+                  </span>
+                  <span className={`text-3xl font-bold tabular-nums ${count > 0 ? 'text-red-400' : 'text-gray-600'}`}>
+                    {count}
+                  </span>
+                </button>
+              )
+            })()}
           </div>
         </section>
       )}
