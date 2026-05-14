@@ -195,7 +195,7 @@ export default function TodayView({ habits, logs, postureCounts = { good: 0, slo
                   className="w-full flex items-center justify-between bg-gray-800 active:bg-gray-700 rounded-2xl px-5 py-4 transition-colors"
                 >
                   <span className="flex items-center gap-3">
-                    <HabitIcon name="LTMs" className={`w-6 h-6 ${loggedToday ? 'text-red-400' : 'text-gray-500'}`} />
+                    <HabitIcon name="LTMs" className="w-6 h-6 text-red-400" />
                     <span className="text-white font-medium text-lg">LTMs</span>
                   </span>
                   <span className={`text-3xl font-bold tabular-nums ${numberColor}`}>
