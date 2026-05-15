@@ -5,7 +5,7 @@ import BottomSheet from './BottomSheet'
 const POMODORO_BREAK   = 5  * 60
 const DURATION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60]
 const MOODS          = ['bored', 'anxious', 'tired', 'fine', 'unsure']
-const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'Other']
+const ACTIVITIES     = ['Amanda', 'Friend Message', 'Music', 'News', 'Doorbell', 'App dev', 'Other']
 
 let audioCtx = null
 let chimeBuffer = null
@@ -84,6 +84,8 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
   const [showBackburner,  setShowBackburner]  = useState(false)
   const [backburnerLog,   setBackburnerLog]   = useState([])
   const [backburnerInput, setBackburnerInput] = useState('')
+  const [showEndReminders, setShowEndReminders] = useState(false)
+  const [remindersSent,   setRemindersSent]   = useState([])
 
   const intervalRef  = useRef(null)
   const startTimeRef = useRef(null)
@@ -161,6 +163,8 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setBackburnerInput('')
     setSessionRowIds([])
     setCyclesDone(0)
+    setShowEndReminders(false)
+    setRemindersSent([])
     setActive(true)
     setShowFullscreen(true)
   }
@@ -224,10 +228,7 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setShowDistraction(false)
   }
 
-  async function endSession() {
-    setActive(false)
-    setShowFullscreen(false)
-
+  async function persistSession() {
     const minutes = Math.ceil(elapsed / 60)
     const shouldSavePartial =
       (!pomodoro && minutes > 0) ||
@@ -272,7 +273,9 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
         .update({ distractions: distractionsPayload })
         .eq('id', finalRowId)
     }
+  }
 
+  function resetSession() {
     setSessionRowIds([])
     setCyclesDone(0)
     setElapsed(0)
@@ -283,7 +286,33 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
     setShowTodoInput(false)
     setTodoInput('')
     setBackburnerInput('')
+    setShowEndReminders(false)
+    setRemindersSent([])
     onSessionComplete?.()
+  }
+
+  async function endSession() {
+    setActive(false)
+    setShowFullscreen(false)
+    await persistSession()
+    // Only surface the wrap step when there's something parked to push.
+    if (backburnerLog.length > 0) {
+      setShowEndReminders(true)
+    } else {
+      resetSession()
+    }
+  }
+
+  function sendAllBackburner() {
+    const text = backburnerLog.map(b => b.text).join('\n')
+    if (!text) return
+    sendToReminders(text)
+    setRemindersSent(backburnerLog.map((_, i) => i))
+  }
+
+  function sendOneBackburner(text, i) {
+    sendToReminders(text)
+    setRemindersSent(prev => (prev.includes(i) ? prev : [...prev, i]))
   }
 
   const displayTime = pomodoro
@@ -726,6 +755,50 @@ export default function FocusTimer({ userId, focusHabitId, postureHabitId, distr
           >
             Take a break
           </button>
+          </div>
+        </div>
+      )}
+
+      {/* End-of-session: push parked backburner items to Reminders */}
+      {showEndReminders && (
+        <div className="fixed inset-0 z-50 bg-gray-950 flex flex-col px-6">
+          <div className="pt-12 pb-4">
+            <p className="text-white text-2xl font-bold">Before you wrap up</p>
+            <p className="text-gray-500 text-sm mt-1">
+              Push what you parked to Apple Reminders so it doesn't slip.
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {backburnerLog.map((b, i) => (
+              <div key={i} className="flex items-start gap-3 bg-gray-900 rounded-xl px-4 py-3">
+                <span className="text-gray-600 text-xs flex-shrink-0 pt-1">{b.at}</span>
+                <span className="text-gray-200 flex-1 text-sm">{b.text}</span>
+                <button
+                  onClick={() => sendOneBackburner(b.text, i)}
+                  className={`text-xs flex-shrink-0 font-medium ${
+                    remindersSent.includes(i)
+                      ? 'text-emerald-400'
+                      : 'text-sky-400 hover:text-sky-300'
+                  }`}
+                >
+                  {remindersSent.includes(i) ? '✓ Sent' : '→ Reminders'}
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="py-6 space-y-3">
+            <button
+              onClick={sendAllBackburner}
+              className="w-full bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-2xl py-4 transition-colors"
+            >
+              Send all → Reminders
+            </button>
+            <button
+              onClick={resetSession}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-2xl py-4 transition-colors"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}
