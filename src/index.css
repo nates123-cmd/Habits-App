@@ -4,6 +4,12 @@
 
 html, body {
   background-color: #030712;
+  /* Lock horizontal motion + pinch zoom at the document level. Inner
+     elements with their own gestures still work because they declare
+     their own touch-action. */
+  overflow-x: hidden;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
 }
 
 /* Bottom sheet slide-up animation */
