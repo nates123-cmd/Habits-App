@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Suite sweep: suppress the blue text-selection highlight + tap-highlight on
+   chrome (buttons, labels, habit rows) when tapping/long-pressing the UI.
+   Selection is re-enabled below for form fields and the user's own content. */
+html, body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Re-enable selection where the user types or where their own content shows. */
+input, textarea, select, [contenteditable], .selectable {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 html, body {
   background-color: #030712;
   /* Lock horizontal motion + pinch zoom at the document level. Inner

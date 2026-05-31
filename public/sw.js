@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tick-v4';
+const CACHE_NAME = 'tick-v5';
 const SHELL = [
   '/Habits-App/',
   '/Habits-App/index.html',
