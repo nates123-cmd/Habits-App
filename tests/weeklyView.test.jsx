@@ -41,7 +41,7 @@ vi.mock('recharts', async () => {
   }
 })
 
-import WeeklyView from '../src/views/WeeklyView.jsx'
+import WeeklyView, { buildStreak, buildWeeklyRate } from '../src/views/WeeklyView.jsx'
 
 const HABIT = { id: 'h1', name: 'BFRB', type: 'reduce' }
 
@@ -106,5 +106,69 @@ describe('WeeklyView — REAL weekly bucketing / rate', () => {
     render(<WeeklyView habits={[HABIT]} userId="u1" />)
     await waitFor(() => expect(screen.getByText('Focus')).toBeTruthy())
     expect(screen.getByText('Total this week')).toBeTruthy()
+  })
+})
+
+// Pure streak/rate math — exported (behavior-preserving) so it is unit-testable
+// without mounting the component. weekDays are plain {start,end} day buckets in
+// the same ISO string space the logs use (string comparison, matching source).
+describe('buildStreak — consecutive-week-day streak math', () => {
+  // 7 day buckets: indices 0..6, day N covers [N, N+1).
+  const days = Array.from({ length: 7 }, (_, i) => ({
+    start: String(i),
+    end:   String(i + 1),
+  }))
+  const log = (day) => ({ habit_id: 'h1', logged_at: String(day) + '.5' })
+
+  it('counts consecutive completed days from the end of the week', () => {
+    // logs on days 4,5,6 (the last three) -> streak 3
+    expect(buildStreak(days, [log(4), log(5), log(6)], 'h1')).toBe(3)
+  })
+
+  it('resets to 0 when the most recent day has no log', () => {
+    // logs on 0..5 but NOT 6 (the last day) -> streak breaks immediately
+    expect(buildStreak(days, [log(0), log(1), log(2), log(3), log(4), log(5)], 'h1')).toBe(0)
+  })
+
+  it('a gap before the most recent run breaks the streak (counts only the trailing run)', () => {
+    // logs on 0,1 then gap on 2, then 3,4,5,6 -> trailing run is 4
+    expect(buildStreak(days, [log(0), log(1), log(3), log(4), log(5), log(6)], 'h1')).toBe(4)
+  })
+
+  it('ignores logs belonging to other habits', () => {
+    const other = { habit_id: 'other', logged_at: '6.5' }
+    expect(buildStreak(days, [other], 'h1')).toBe(0)
+  })
+
+  it('full week of logs yields a streak of 7', () => {
+    expect(buildStreak(days, days.map((_, i) => log(i)), 'h1')).toBe(7)
+  })
+
+  it('buildWeeklyRate is the % of distinct days with a log (3/7 -> 43)', () => {
+    expect(buildWeeklyRate(days, [log(0), log(2), log(4)], 'h1')).toBe(43)
+    // multiple logs same day count once
+    expect(buildWeeklyRate(days, [log(0), log(0), log(0)], 'h1')).toBe(14)
+    expect(buildWeeklyRate(days, [], 'h1')).toBe(0)
+  })
+})
+
+describe('WeeklyView — Build section is wired to the UI', () => {
+  const BUILD = { id: 'b1', name: 'Focus', type: 'build' }
+
+  it('renders a streak + weekly-rate stat for build habits (previously dead code)', async () => {
+    // logs on the trailing days of the pinned week (Jun 1..7); now() = Wed Jun3.
+    // Use days 1,2,3 -> rate 3/7 = 43%, streak measured to end of week.
+    weekLogs = [
+      { id: '1', habit_id: 'b1', logged_at: localNoon(1) },
+      { id: '2', habit_id: 'b1', logged_at: localNoon(2) },
+      { id: '3', habit_id: 'b1', logged_at: localNoon(3) },
+    ]
+    render(<WeeklyView habits={[BUILD]} userId="u1" />)
+    await waitFor(() => expect(screen.getByText('Build')).toBeTruthy())
+    // "Focus" appears twice: the focus-summary section label AND the habit name.
+    expect(screen.getAllByText('Focus').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('Day streak')).toBeTruthy()
+    // 3 distinct days of 7 -> 43%
+    await waitFor(() => expect(screen.getByText('43%')).toBeTruthy())
   })
 })

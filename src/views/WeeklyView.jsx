@@ -5,6 +5,29 @@ import {
 import { supabase } from '../lib/supabase'
 import { thisWeekDays } from '../lib/dateUtils'
 
+// Pure, testable streak math: count consecutive days (working back from the end
+// of the week) that have at least one log for the habit. The run breaks on the
+// first logless day, so a gap resets the streak to the days after the gap.
+export function buildStreak(weekDays, weekLogs, habitId) {
+  let streak = 0
+  for (let i = weekDays.length - 1; i >= 0; i--) {
+    const day = weekDays[i]
+    const hasLog = weekLogs.some(
+      l => l.habit_id === habitId && l.logged_at >= day.start && l.logged_at < day.end
+    )
+    if (hasLog) streak++; else break
+  }
+  return streak
+}
+
+// Pure, testable weekly completion rate: share of the 7 days with >= 1 log, as %.
+export function buildWeeklyRate(weekDays, weekLogs, habitId) {
+  const daysWithLog = weekDays.filter(day =>
+    weekLogs.some(l => l.habit_id === habitId && l.logged_at >= day.start && l.logged_at < day.end)
+  ).length
+  return Math.round((daysWithLog / 7) * 100)
+}
+
 export default function WeeklyView({ habits, userId }) {
   const [weekLogs,      setWeekLogs]      = useState([])
   const [focusSessions, setFocusSessions] = useState([])
@@ -68,24 +91,8 @@ export default function WeeklyView({ habits, userId }) {
     return Object.entries(counts).sort((a, b) => b[1] - a[1])
   }
 
-  function buildStreak(habitId) {
-    let streak = 0
-    for (let i = weekDays.length - 1; i >= 0; i--) {
-      const day = weekDays[i]
-      const hasLog = weekLogs.some(
-        l => l.habit_id === habitId && l.logged_at >= day.start && l.logged_at < day.end
-      )
-      if (hasLog) streak++; else break
-    }
-    return streak
-  }
-
-  function buildWeeklyRate(habitId) {
-    const daysWithLog = weekDays.filter(day =>
-      weekLogs.some(l => l.habit_id === habitId && l.logged_at >= day.start && l.logged_at < day.end)
-    ).length
-    return Math.round((daysWithLog / 7) * 100)
-  }
+  const streakFor = (habitId) => buildStreak(weekDays, weekLogs, habitId)
+  const rateFor   = (habitId) => buildWeeklyRate(weekDays, weekLogs, habitId)
 
   const totalFocusMinutes = focusSessions.reduce((sum, s) => sum + (s.duration_minutes || 0), 0)
 
@@ -177,6 +184,34 @@ export default function WeeklyView({ habits, userId }) {
                       </div>
                     )
                   })()}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Build habits */}
+      {buildHabits.length > 0 && (
+        <section>
+          <p className="text-xs uppercase tracking-widest text-gray-500 mb-4">Build</p>
+          <div className="space-y-3">
+            {buildHabits.map(h => {
+              const streak = streakFor(h.id)
+              const rate   = rateFor(h.id)
+              return (
+                <div key={h.id} className="bg-gray-800 rounded-2xl p-5">
+                  <p className="text-white font-medium mb-3">{h.name}</p>
+                  <div className="flex gap-6">
+                    <div>
+                      <p className={`text-3xl font-bold tabular-nums ${streak > 0 ? 'text-emerald-400' : 'text-gray-600'}`}>{streak}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Day streak</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-indigo-400">{rate}%</p>
+                      <p className="text-xs text-gray-500 mt-0.5">This week</p>
+                    </div>
+                  </div>
                 </div>
               )
             })}
